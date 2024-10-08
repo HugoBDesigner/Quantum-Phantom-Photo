@@ -58,7 +58,7 @@ function sprite.new(path, total_frames, frame_duration)
 		spr.quads[i] = love.graphics.newQuad( (i-1)*ww, 0, ww, hh, spr.img_width, spr.img_height)
 	end
 	
-	spr.draw = function(self, x, y, palette, frame, ignoreTransform)
+	spr.draw = function(self, x, y, palette, frame, ignoreTransform, angle)
 		palette = palette or {1, 2, 3, 4}
 		while (#palette < 4) do
 			palette[#palette + 1] = palette[#palette]
@@ -69,10 +69,23 @@ function sprite.new(path, total_frames, frame_duration)
 			tx, ty = game.off_x + tx * game.tile_size, game.off_y + ty * game.tile_size
 		end
 		
+		tx = math.floor(tx)
+		ty = math.floor(ty)
+		
+		local an, ox, oy = 0, 0, 0
+		if (angle ~= nil) then
+			an = angle
+			ox = self.img_width/2
+			oy = self.img_height/2
+			-- tx = tx - self.img_width/2
+			-- ty = ty - self.img_height/2
+		end
 		local frame = frame or self.frame
 		for i = 1, 4 do
-			love.graphics.setColor( colors[ palette[i] ] )
-			love.graphics.draw(self.img_layers[i], self.quads[frame], tx, ty)
+			if (palette[i] > 0) then
+				love.graphics.setColor( colors[ palette[i] ] )
+				love.graphics.draw(self.img_layers[i], self.quads[frame], tx, ty, an, 1, 1, ox, oy)
+			end
 		end
 	end
 	

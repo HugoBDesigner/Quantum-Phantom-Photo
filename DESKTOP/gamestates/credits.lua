@@ -1,6 +1,8 @@
 credits = {}
 
 function credits:load()
+	toggle_releasedb()
+	
 	self.credits = {}
 	self.credits_shadow = {}
 	self:processTexts()
@@ -12,6 +14,12 @@ function credits:draw()
 	local xx, yy = 4, 4
 	love.graphics.printf({colors[3], "CREDITS"}, xx, yy + 1, game_width, "center")
 	love.graphics.printf({colors[1], "CREDITS"}, xx, yy, game_width, "center")
+	
+	love.graphics.setColor(colors[3])
+	local margin = 8
+	love.graphics.rectangle("fill", margin, yy + 8 + 4, game_width - 2*margin, 1)
+	
+	love.graphics.setColor(1, 1, 1, 1)
 	
 	local hh = 14
 	local gap = 4

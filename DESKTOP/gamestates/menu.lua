@@ -21,9 +21,26 @@ function menu:load(_selection)
 end
 
 function menu:draw()
+	-- Title image
+	sprites.title_menu:draw(math.floor(game_width/2 - sprites.title_menu.img_width/2), 6 + math.sin(oscilator/2)/2+.5, nil, nil, true)
+	
+	local margin = 8
+	local line_yy = 60
+	love.graphics.setColor(colors[3])
+	
+	-- Version number
+	love.graphics.setFont(version_font)
+	love.graphics.printf("v" .. VERSION, margin + 1, line_yy - 6, game_width - 2*margin, "right" )
+	
+	-- Divider line
+	love.graphics.rectangle("fill", margin, line_yy, game_width - 2*margin, 1)
+	
+	love.graphics.setFont(pixel_font)
+	
 	local hh = 14
 	local margin_left = 20
-	local margin_bottom = -6
+	local margin_bottom = -10
+	
 	for i, v in ipairs(self.options) do
 		if (v.disabled) then
 			love.graphics.setColor(colors[3])
@@ -44,6 +61,8 @@ function menu:draw()
 			love.graphics.print(txt, margin_left, game_height - margin_bottom - hh - #self.options * hh + (i-1)*hh)
 		end
 	end
+	
+	drawForward()
 end
 
 function menu:button_pressed(button)

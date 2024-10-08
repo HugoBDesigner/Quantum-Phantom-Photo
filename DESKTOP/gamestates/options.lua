@@ -16,28 +16,42 @@ function options:draw()
 	love.graphics.setColor(1, 1, 1, 1)
 	
 	local xx, yy = 4, 4
-	local str = (self.in_game and "PAUSE" or "OPTIONS")
+	local str = (self.in_game and ("PAUSED - LEVEL " .. game.level) or "OPTIONS")
 	love.graphics.printf({colors[3], str}, xx, yy + 1, game_width, "center")
 	love.graphics.printf({colors[1], str}, xx, yy, game_width, "center")
 	
+	love.graphics.setColor(colors[3])
+	local margin = 8
+	love.graphics.rectangle("fill", margin, yy + 8 + 4, game_width - 2*margin, 1)
+	
+	love.graphics.setColor(1, 1, 1, 1)
+	
 	local hh = 14
 	local gap = 4
-	xx = game_width/2 - 25
-	yy = yy + 1.5*hh
+	xx = game_width/2 + 4
+	yy = yy + 1.25*hh
 	for i = 1, #self.options/2 do
 		local i1 = (i-1)*2+1
 		local i2 = i1+1
 		
 		love.graphics.printf(self.options_shadow[i1], 0, yy + 1, xx - gap/2, "right")
-		love.graphics.printf(self.options_shadow[i2], xx + gap/2, yy + 1, game_width-xx, "left")
-		
 		love.graphics.printf(self.options[i1], 0, yy, xx - gap/2, "right")
+		
+		if (i == 3) then
+			yy = yy + 4
+		end
+		
+		love.graphics.printf(self.options_shadow[i2], xx + gap/2, yy + 1, game_width-xx, "left")
 		love.graphics.printf(self.options[i2], xx + gap/2, yy, game_width-xx, "left")
+		
+		if (i == 3) then
+			yy = yy + (hh-4)
+		end
 		
 		yy = yy + hh
 	end
 	
-	xx = xx - gap/2 - pixel_font:getWidth("MUSIC:")
+	xx = 4
 	for i, v in ipairs(self.pause_options) do
 		love.graphics.printf(v, xx, yy, game_width-xx, "left")
 		
@@ -57,12 +71,13 @@ function options:processTexts()
 		self[tab] = {
 			{primary, "MUSIC:"}, {secondary, (self.selected == 1 and "> " or "") .. (music_enabled and "ON" or "OFF")},
 			{primary, "  SFX:"}, {secondary, (self.selected == 2 and "> " or "") .. (sfx_enabled and "ON" or "OFF")},
+			{primary, "TOGGLEABLE B BUTTON:"}, {secondary, (self.selected == 3 and "> " or "") .. (b_toggle and "ON" or "OFF")},
 		}
 	end
 	if (self.in_game) then
 		self.pause_options = {
-			{colors[1], (self.selected == 3 and "> " or "") .. "RETURN TO GAME"},
-			{colors[1], (self.selected == 4 and "> " or "") .. "RETURN TO MENU"},
+			{colors[1], (self.selected == 4 and "> " or "") .. "RETURN TO GAME"},
+			{colors[1], (self.selected == 5 and "> " or "") .. "RETURN TO MENU"},
 		}
 	end
 end
@@ -83,11 +98,13 @@ function options:dpad_pressed(dir)
 		self:processTexts()
 		sounds.select:play()
 	elseif (dir == "left" or dir == "right") then
-		if (self.selected == 1 or self.selected == 2) then
+		if (self.selected <= 3) then
 			if (self.selected == 1) then
 				music_enabled = not music_enabled
 			elseif (self.selected == 2) then
 				sfx_enabled = not sfx_enabled
+			elseif (self.selected == 3) then
+				b_toggle = not b_toggle
 			end
 			updateVolume()
 			saveData()
@@ -99,19 +116,21 @@ end
 
 function options:button_pressed(button)
 	if (button == "a" or button == "select") then
-		if (self.selected == 1 or self.selected == 2) then
+		if (self.selected <= 3) then
 			if (self.selected == 1) then
 				music_enabled = not music_enabled
 			elseif (self.selected == 2) then
 				sfx_enabled = not sfx_enabled
+			elseif (self.selected == 3) then
+				b_toggle = not b_toggle
 			end
 			updateVolume()
 			saveData()
 			sounds.enter:play()
 			self:processTexts()
-		elseif (self.selected == 3) then
-			self:goToGame()
 		elseif (self.selected == 4) then
+			self:goToGame()
+		elseif (self.selected == 5) then
 			self:goToMenu()
 		end
 	elseif (button == "b" and not self.in_game) then

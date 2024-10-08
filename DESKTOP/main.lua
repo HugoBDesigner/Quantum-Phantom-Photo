@@ -1,3 +1,5 @@
+VERSION = "1.0.1"
+
 json = require("json")
 sprite = require("sprite")
 -- require("js")
@@ -21,6 +23,7 @@ function love.load()
 		casing_palette = 3,
 		music_enabled = true,
 		sfx_enabled = true,
+		b_toggle = true,
 	}
 	SAVE_PATH = "quantum_save.json"
 	for i, v in pairs(save_data) do
@@ -32,6 +35,7 @@ function love.load()
 		timer = 0,
 		callback = nil
 	}
+	mouse_bheld = false
 	
 	sounds = {
 		title_song = {source = love.audio.newSource("audio/title_song.ogg", "static"), is_music = true, volume = 0.5},
@@ -96,6 +100,7 @@ function love.load()
 	}
 	
 	pixel_font = love.graphics.newImageFont( "sprites/font_px.png", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.:;/,'\"-_<>* !?{}%&", 1 )
+	version_font = love.graphics.newImageFont( "sprites/font_ver.png", "v.0123456789", 1 )
 	
 	love.graphics.setFont(pixel_font)
 	
@@ -157,6 +162,7 @@ function love.load()
 	
 	love.graphics.setDefaultFilter("nearest", "nearest")
 	sprites.title = sprite.new("sprites/title.png")
+	sprites.title_menu = sprite.new("sprites/title_menu.png")
 	
 	mouse_dpadpressed = nil
 	mouse_buttonpressed = nil
@@ -556,6 +562,10 @@ function button_pressed(button)
 	if (hold_timer.timer > 0) then return end
 	if (button_mapping.buttons[button].pressed) then return end
 	
+	if (button ~= "b") then
+		toggle_releasedb()
+	end
+	
 	button_mapping.buttons[button].pressed = true
 	if (state.button_pressed) then state:button_pressed(button) end
 end
@@ -563,8 +573,31 @@ end
 function button_released(button)
 	if (not button_mapping.buttons[button].pressed) then return end
 	
+	if (button == "b") then
+		if (mouse_bheld) then -- If player held button for a while, keep it pressed
+			return
+		end
+	end
+	
 	button_mapping.buttons[button].pressed = false
 	if (state.button_released) then state:button_released(button) end
+end
+
+function toggle_pressedb()
+	if (b_toggle) then
+		if (state == game and mouse_bheld == false) then -- Double-pressing should turn it off
+			mouse_bheld = true
+		else
+			toggle_releasedb()
+		end
+	end
+end
+
+function toggle_releasedb()
+	if (mouse_bheld) then
+		mouse_bheld = false
+		button_released("b")
+	end
 end
 
 function button_isDown(button)
@@ -652,11 +685,12 @@ function love.keypressed(key, scancode, isrepeat)
 		elseif (menu_right.state ~= "closed") then
 			menu_right.state = "closing"
 		end
-	elseif (key == "space" or key == "c" or key == "l") then
+	elseif (key == "c" or key == "l") then
 		button_pressed("select")
-	elseif (key == "z" or key == "j") then
+	elseif (key == "z" or key == "j" or key == "lshift" or key == "rshift" or key == "backspace") then
 		button_pressed("b")
-	elseif (key == "x" or key == "k") then
+		toggle_pressedb()
+	elseif (key == "x" or key == "k" or key == "space") then
 		button_pressed("a")
 	end
 end
@@ -678,11 +712,11 @@ function love.keyreleased(key, scancode, isrepeat)
 	
 	if (key == "escape" or key == "enter" or key == "return" or key == "kpenter") then
 		button_released("start")
-	elseif (key == "space" or key == "c" or key == "l") then
+	elseif (key == "c" or key == "l") then
 		button_released("select")
-	elseif (key == "z" or key == "j") then
+	elseif (key == "z" or key == "j" or key == "lshift" or key == "rshift" or key == "backspace") then
 		button_released("b")
-	elseif (key == "x" or key == "k") then
+	elseif (key == "x" or key == "k" or key == "space") then
 		button_released("a")
 	end
 end
@@ -736,6 +770,10 @@ function love.mousepressed(x, y, button, isTouch)
 		if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape) ) then
 			mouse_buttonpressed = i
 			button_pressed(i)
+			
+			if (i == "b") then
+				toggle_pressedb()
+			end
 			break
 		end
 	end
@@ -909,6 +947,19 @@ function updatePalette()
 	for i = 1, 4 do
 		colors[i] = palettes[game_palette][i]
 	end
+	
+	local img_data = love.image.newImageData("sprites/icon_small.png")
+	img_data:mapPixel(function(x, y, r, g, b, a)
+		if (a < 0.5) then
+			return 1, 1, 1, 0
+		end
+		
+		local avg = math.min(0.9999, math.max(0.0001, (r + g + b) / 3))
+		local idx = 3 - math.floor(avg * 4);
+		
+		return unpack(colors[idx + 1])
+	end)
+	love.window.setIcon(img_data)
 	
 	if (state.updatePalette) then
 		state:updatePalette()

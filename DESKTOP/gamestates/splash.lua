@@ -1,6 +1,8 @@
 splash = {}
 
 function splash:load()
+	toggle_releasedb()
+	
 	self.flashing = {false, 0, .5, 2} -- {Is flashing, flashing timer, flashing total time, number of flashes}
 	hold(0.5, function()
 		sounds.title_song:play()
@@ -44,7 +46,7 @@ function splash:draw()
 end
 
 function splash:button_pressed(button)
-	if (button == "select" or button == "start") then
+	if (button == "select" or button == "start" or button == "a") then
 		if (not self.flashing[1]) then
 			cancel_hold()
 			self.flashing[1] = true

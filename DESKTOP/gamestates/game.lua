@@ -46,7 +46,10 @@ sprites.player_left_photo = sprite.new("sprites/player_left_photo.png")
 sprites.player_right_photo = sprite.new("sprites/player_right_photo.png")
 
 -- CUTSCENE STUFF
-sprites.cutscene_back = sprite.new("sprites/cutscene_00.png")
+sprites.cutscene_stars = sprite.new("sprites/cutscene_00a.png")
+sprites.cutscene_blocker = sprite.new("sprites/cutscene_00b.png")
+sprites.cutscene_back = sprite.new("sprites/cutscene_00c.png")
+sprites.cutscene_clouds = sprite.new("sprites/cutscene_00d.png")
 sprites.cutscene_ghost_happy = sprite.new("sprites/cutscene_01.png")
 sprites.cutscene_ghost_angry = sprite.new("sprites/cutscene_02.png")
 sprites.cutscene_ghost_scared = sprite.new("sprites/cutscene_03.png")
@@ -58,6 +61,8 @@ sprites.ghost_square.frame = 3
 sprites.ghost_triangle.frame = 6
 
 function game:load(_level)
+	toggle_releasedb()
+	
 	self.level = 1
 	self.game_over = false
 	self.current_text = nil
@@ -212,18 +217,25 @@ function game:draw()
 	if (self.current_text) then
 		
 		local hh = 14
-		local yy
+		local yy = math.floor(game_height/2 - #self.level_texts[self.current_text]*hh/2 + 3)
 		if (self.game_over) then
 			
 			-- Background
+			sprites.cutscene_stars:draw(0, 0, nil, nil, true)
+			sprites.cutscene_blocker:draw(140, 20, nil, nil, true, oscilator/20)
+			
 			sprites.cutscene_back:draw(0, 0, nil, nil, true)
+			local cloud_scroll_time = 120 * 3
+			local clouds_x_off = (oscilator % cloud_scroll_time)/cloud_scroll_time * sprites.cutscene_clouds.img_width
+			sprites.cutscene_clouds:draw(0 - clouds_x_off, 0, nil, nil, true)
+			sprites.cutscene_clouds:draw(sprites.cutscene_clouds.img_width - clouds_x_off, 0, nil, nil, true)
 			
 			-- Ghost
 			if (self.current_text == 5) then
 				local progress = math.min(1, self.game_over_anim[1] / self.game_over_anim[2] )
 				progress = 1-progress -- game_over_anim decrements
-				local palette_step = { {4}, {3, 4}, {2, 3, 4}, {1, 2, 3, 4} }
-				palette_step = palette_step[ math.floor(progress * 4) + 1 ]
+				local palette_step = { {4, 0, 4, 0}, {4}, {3, 4}, {3, 4}, {3, 3, 4}, {2, 3, 4}, {1, 2, 3, 4} }
+				palette_step = palette_step[ math.ceil(progress * #palette_step) ]
 				
 				sprites.cutscene_ghost_happy:draw(0, 1 + math.sin(oscilator), palette_step, nil, true)
 			elseif (self.current_text == 6) then
@@ -304,8 +316,6 @@ function game:draw()
 					love.graphics.printf(text, 0 +1, yy + (idx-1)*hh +1, game_width, "center")
 				end
 			end
-		else
-			yy = math.floor(game_height/2 - #self.level_texts[self.current_text]*hh/2 + 3)
 		end
 		
 		love.graphics.setColor(1, 1, 1, 1)
@@ -735,7 +745,8 @@ function game:button_pressed(button)
 		if (self.game_over and self.game_over_anim[1] > 0) then
 			return
 		end
-		if (button == "a" or button == "b" or button == "start" or button == "select") then
+		
+		if (button == "a" or button == "start" or button == "select") then
 			sounds.enter:play()
 			self.current_text = self.current_text + 1
 			if (self.game_over) then
