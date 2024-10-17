@@ -1,10 +1,9 @@
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 json = require("json")
 sprite = require("sprite")
 -- require("js")
 
-DEBUG = false
 sprites = {}
 
 function love.load()
@@ -99,7 +98,7 @@ function love.load()
 		{0, 0, 0, 1}
 	}
 	
-	pixel_font = love.graphics.newImageFont( "sprites/font_px.png", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.:;/,'\"-_<>* !?{}%&", 1 )
+	pixel_font = love.graphics.newImageFont( "sprites/font_px.png", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.:;/,'\"-_<>* !?{}%&ÃÁÀÂÄÇÉÈÊËÍÌÎÏÑÕÓÒÔÖÚÙÛÜÝ", 1 )
 	version_font = love.graphics.newImageFont( "sprites/font_ver.png", "v.0123456789", 1 )
 	
 	love.graphics.setFont(pixel_font)
@@ -203,18 +202,12 @@ function love.load()
 	
 	loadData()
 	setScale()
-	if (DEBUG) then
-		loadState(game, latest_level) -- DEBUG
-	else
-		loadState(splash)
-	end
+	loadState(splash)
 	updatePalette()
 	updateVolume()
 	
-	if (DEBUG) then
-		testaabb = love.image.newImageData(window_width*scale, window_height*scale)
-		testaabb_img = love.graphics.newImage(testaabb)
-	end
+	testaabb = love.image.newImageData(window_width*scale, window_height*scale)
+	testaabb_img = nil
 end
 
 function love.update(dt)
@@ -524,7 +517,7 @@ function love.draw()
 		love.graphics.setBlendMode("alpha", "alphamultiply")
 	end
 	
-	if (DEBUG) then
+	if (testaabb_img) then
 		love.graphics.setColor(1, 0.5, 0.5, 0.8)
 		love.graphics.draw(testaabb_img)
 	end
@@ -657,11 +650,27 @@ function button_side_isDown(button)
 end
 
 function love.keypressed(key, scancode, isrepeat)
+	local ctrlpressed = (love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl"))
+	local shiftpressed = (love.keyboard.isDown("lshift") or love.keyboard.isDown("rshift"))
+	local altpressed = (love.keyboard.isDown("lalt") or love.keyboard.isDown("ralt"))
 	-- DEBUG
-	if (DEBUG and key == "f1") then makeTest() end
-	if (DEBUG and key == "f5") then
-		love.load()
-		return
+	if (ctrlpressed) then
+		if (not altpressed) then
+			if (key == "f1") then
+				makeTest()
+			elseif (key == "f5") then
+				love.audio.stop()
+				love.load()
+				return
+			end
+		else
+			local kn = string.gsub(key, "kp", "")
+			if (string.match(kn, "^%d$")) then
+				local num = tonumber(key)
+				num = (num == 0 and 10 or num)
+				loadState("game", num)
+			end
+		end
 	end
 	
 	if (key == "w" or key == "up") then
@@ -689,7 +698,7 @@ function love.keypressed(key, scancode, isrepeat)
 		button_pressed("select")
 	elseif (key == "z" or key == "j" or key == "lshift" or key == "rshift" or key == "backspace") then
 		button_pressed("b")
-		toggle_pressedb()
+		-- toggle_pressedb()
 	elseif (key == "x" or key == "k" or key == "space") then
 		button_pressed("a")
 	end
@@ -831,6 +840,18 @@ function love.wheelmoved(x, y)
 		end
 		updateVolume()
 	end
+end
+
+function love.joystickpressed(joystick, button)
+	-- TODO
+end
+
+function love.joystickreleased(joystick, button)
+	-- TODO
+end
+
+function love.joystickhat(joystick, hat, direction)
+	-- TODO
 end
 
 function aabb(mx, my, x, y, w, h, shape)
@@ -1122,6 +1143,11 @@ end
 
 
 function makeTest()
+	if (testaabb_img) then
+		-- Make it toggle
+		testaabb_img = nil
+		return
+	end
 	testaabb:mapPixel(function(x, y, r, g, b, a)
 		if (menu_right.state == "closed" and menu_left.state == "closed") then
 			-- local mx, my = love.mouse.getPosition()
@@ -1209,6 +1235,7 @@ _lg_print = love.graphics.print
 
 function love.graphics.print(...)
 	local args = {...}
+	args[3] = args[3] - 3 -- Y offset due to accents
 	args[1] = string.upper(args[1])
 	_lg_print(unpack(args))
 end
