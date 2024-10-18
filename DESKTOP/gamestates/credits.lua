@@ -12,8 +12,8 @@ function credits:draw()
 	love.graphics.setColor(1, 1, 1, 1)
 	
 	local xx, yy = 4, 4
-	love.graphics.printf({colors[3], "CREDITS"}, xx, yy + 1, game_width, "center")
-	love.graphics.printf({colors[1], "CREDITS"}, xx, yy, game_width, "center")
+	love.graphics.printf({colors[3], "CREDITS_CREDITS"}, xx, yy + 1, game_width, "center")
+	love.graphics.printf({colors[1], "CREDITS_CREDITS"}, xx, yy, game_width, "center")
 	
 	love.graphics.setColor(colors[3])
 	local margin = 8
@@ -23,7 +23,7 @@ function credits:draw()
 	
 	local hh = 14
 	local gap = 4
-	xx = game_width/2 - 25
+	xx = game_width/2 - 23
 	yy = yy + 1.25*hh
 	for i = 1, #self.credits/2 do
 		local i1 = (i-1)*2+1
@@ -32,10 +32,10 @@ function credits:draw()
 		if (i == 1) then
 			love.graphics.printf(self.credits_shadow[i1], 0, yy + 1, game_width, "center")
 			love.graphics.printf(self.credits[i1], 0, yy, game_width, "center")
-			yy = yy + hh*1.5
+			yy = yy + hh*1.5 + 2
 			love.graphics.printf(self.credits_shadow[i2], 0, yy + 1, game_width, "center")
 			love.graphics.printf(self.credits[i2], 0, yy, game_width, "center")
-			yy = yy + hh
+			yy = yy + hh - 2
 		else
 			love.graphics.printf(self.credits_shadow[i1], 0, yy + 1, xx - gap/2, "right")
 			love.graphics.printf(self.credits[i1], 0, yy, xx - gap/2, "right")
@@ -56,8 +56,8 @@ function credits:processTexts()
 		local secondary = (idx == 1 and colors[2] or colors[3])
 		self[tab] = {
 			{primary, "GAME DESIGN, ART, MUSIC, PIXEL FONT:"}, {secondary, "HUGOBDESIGNER"},
-			{primary, "   SFX:"}, {secondary, "PUZZLESCRIPT"},
-			{primary, " USING:"}, {secondary, "LOVE2D"},
+			{primary, "SFX_CREDITS:"}, {secondary, "PUZZLESCRIPT"},
+			{primary, "USING:"}, {secondary, "LOVE2D"},
 		}
 		
 		if (love.system.getOS() == "Web") then

@@ -16,7 +16,7 @@ function options:draw()
 	love.graphics.setColor(1, 1, 1, 1)
 	
 	local xx, yy = 4, 4
-	local str = (self.in_game and ("PAUSED - LEVEL " .. game.level) or "OPTIONS")
+	local str = (self.in_game and string.format(getText("PAUSED - LEVEL %d"), game.level) or "OPTIONS_OPTIONS")
 	love.graphics.printf({colors[3], str}, xx, yy + 1, game_width, "center")
 	love.graphics.printf({colors[1], str}, xx, yy, game_width, "center")
 	
@@ -28,7 +28,7 @@ function options:draw()
 	
 	local hh = 14
 	local gap = 4
-	xx = game_width/2 + 4
+	xx = game_width/2 + 6
 	yy = yy + 1.25*hh
 	for i = 1, #self.options/2 do
 		local i1 = (i-1)*2+1
@@ -69,15 +69,16 @@ function options:processTexts()
 		local primary = (idx == 1 and colors[1] or colors[4])
 		local secondary = (idx == 1 and colors[2] or colors[3])
 		self[tab] = {
-			{primary, "MUSIC:"}, {secondary, (self.selected == 1 and "> " or "") .. (music_enabled and "ON" or "OFF")},
-			{primary, "  SFX:"}, {secondary, (self.selected == 2 and "> " or "") .. (sfx_enabled and "ON" or "OFF")},
-			{primary, "TOGGLEABLE B BUTTON:"}, {secondary, (self.selected == 3 and "> " or "") .. (b_toggle and "ON" or "OFF")},
+			{primary, "MUSIC:"}, {secondary, (self.selected == 1 and "> " or "") .. getText(music_enabled and "ON" or "OFF")},
+			{primary, "SFX_OPTIONS:"}, {secondary, (self.selected == 2 and "> " or "") .. getText(sfx_enabled and "ON" or "OFF")},
+			{primary, "TOGGLEABLE B BUTTON:"}, {secondary, (self.selected == 3 and "> " or "") .. getText(b_toggle and "ON" or "OFF")},
+			{primary, "LANGUAGE:"}, {secondary, (self.selected == 4 and "> " or "") .. current_language}, -- Special case for cropping
 		}
 	end
 	if (self.in_game) then
 		self.pause_options = {
-			{colors[1], (self.selected == 4 and "> " or "") .. "RETURN TO GAME"},
-			{colors[1], (self.selected == 5 and "> " or "") .. "RETURN TO MENU"},
+			{colors[1], (self.selected == 5 and "> " or "") .. getText("RETURN TO GAME")},
+			{colors[1], (self.selected == 6 and "> " or "") .. getText("RETURN TO MENU")},
 		}
 	end
 end
@@ -98,15 +99,27 @@ function options:dpad_pressed(dir)
 		self:processTexts()
 		sounds.select:play()
 	elseif (dir == "left" or dir == "right") then
-		if (self.selected <= 3) then
+		if (self.selected <= 4) then
 			if (self.selected == 1) then
 				music_enabled = not music_enabled
+				updateVolume()
 			elseif (self.selected == 2) then
 				sfx_enabled = not sfx_enabled
+				updateVolume()
 			elseif (self.selected == 3) then
 				b_toggle = not b_toggle
+			elseif (self.selected == 4) then
+				local cur_language_idx = table.find(languages, current_language)
+				cur_language_idx = cur_language_idx + (dir == "left" and -1 or 1)
+				
+				if (cur_language_idx > #languages) then
+					cur_language_idx = 1
+				elseif (cur_language_idx < 1) then
+					cur_language_idx = #languages
+				end
+				current_language = languages[cur_language_idx]
+				updateLanguage()
 			end
-			updateVolume()
 			saveData()
 			sounds.enter:play()
 			self:processTexts()
@@ -116,21 +129,30 @@ end
 
 function options:button_pressed(button)
 	if (button == "a" or button == "select") then
-		if (self.selected <= 3) then
+		if (self.selected <= 4) then
 			if (self.selected == 1) then
 				music_enabled = not music_enabled
 			elseif (self.selected == 2) then
 				sfx_enabled = not sfx_enabled
 			elseif (self.selected == 3) then
 				b_toggle = not b_toggle
+			elseif (self.selected == 4) then
+				local cur_language_idx = table.find(languages, current_language)
+				cur_language_idx = cur_language_idx + 1 -- Assume right progression for A presses
+				
+				if (cur_language_idx > #languages) then
+					cur_language_idx = 1
+				end
+				current_language = languages[cur_language_idx]
+				updateLanguage()
 			end
 			updateVolume()
 			saveData()
 			sounds.enter:play()
 			self:processTexts()
-		elseif (self.selected == 4) then
-			self:goToGame()
 		elseif (self.selected == 5) then
+			self:goToGame()
+		elseif (self.selected == 6) then
 			self:goToMenu()
 		end
 	elseif (button == "b" and not self.in_game) then

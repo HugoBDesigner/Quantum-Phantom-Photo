@@ -25,11 +25,10 @@ function splash:draw()
 	-- love.graphics.draw(sprites.title, 0, math.sin(love.timer.getTime()))
 	
 	local font = love.graphics.getFont()
-	local text = "PRESS START"
 	
 	if (math.sin(oscilator) < .8 or self.flashing[1]) then
 		love.graphics.setColor(colors[3])
-		love.graphics.print(text, game_width/2 - font:getWidth(text)/2, game_height - 16 + 1)
+		love.graphics.printf("PRESS START", 0, game_height - 16 + 1, game_width, "center")
 	
 		love.graphics.setColor(colors[1])
 		if (self.flashing[1]) then
@@ -41,7 +40,7 @@ function splash:draw()
 				love.graphics.setColor(colors[4])
 			end
 		end
-		love.graphics.print(text, game_width/2 - font:getWidth(text)/2, game_height - 16)
+		love.graphics.printf("PRESS START", 0, game_height - 16, game_width, "center")
 	end
 end
 

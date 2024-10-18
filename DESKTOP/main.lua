@@ -23,6 +23,7 @@ function love.load()
 		music_enabled = true,
 		sfx_enabled = true,
 		b_toggle = true,
+		current_language = "EN_US",
 	}
 	SAVE_PATH = "quantum_save.json"
 	for i, v in pairs(save_data) do
@@ -35,6 +36,8 @@ function love.load()
 		callback = nil
 	}
 	mouse_bheld = false
+	
+	languages = {"EN_US", "PT_BR"}
 	
 	sounds = {
 		title_song = {source = love.audio.newSource("audio/title_song.ogg", "static"), is_music = true, volume = 0.5},
@@ -205,6 +208,7 @@ function love.load()
 	loadState(splash)
 	updatePalette()
 	updateVolume()
+	updateLanguage()
 	
 	testaabb = love.image.newImageData(window_width*scale, window_height*scale)
 	testaabb_img = nil
@@ -659,7 +663,12 @@ function love.keypressed(key, scancode, isrepeat)
 			if (key == "f1") then
 				makeTest()
 			elseif (key == "f5") then
+				-- Hard reset: destroys the save file
+				love.graphics.clear() -- Deliberately flash the screen to indicate the reset
+				love.graphics.present()
+				
 				love.audio.stop()
+				love.filesystem.remove(SAVE_PATH)
 				love.load()
 				return
 			end
@@ -671,6 +680,13 @@ function love.keypressed(key, scancode, isrepeat)
 				loadState("game", num)
 			end
 		end
+	elseif (key == "f5") then
+		-- Soft reset: preserves the save file
+		love.graphics.clear() -- Deliberately flash the screen to indicate the reset
+		love.graphics.present()
+		love.audio.stop()
+		love.load()
+		return
 	end
 	
 	if (key == "w" or key == "up") then
@@ -987,6 +1003,15 @@ function updatePalette()
 	end
 end
 
+function updateLanguage()
+	local lang_file = "languages/" .. string.lower(current_language) .. ".json"
+	language_data = json.decodeFile(lang_file)
+	
+	if (state.processTexts) then
+		state:processTexts()
+	end
+end
+
 function drawForward()
 	love.graphics.setColor(colors[3])
 	love.graphics.print("A}", game_width-16, game_height-9)
@@ -1231,13 +1256,50 @@ function makeTest()
 	testaabb_img = love.graphics.newImage(testaabb)
 end
 
+acc_lower = {"ã","á","à","â","ä","ç","é","è","ê","ë","í","ì","î","ï","ñ","õ","ó","ò","ô","ö","ú","ù","û","ü","ý"}
+acc_upper = {"Ã","Á","À","Â","Ä","Ç","É","È","Ê","Ë","Í","Ì","Î","Ï","Ñ","Õ","Ó","Ò","Ô","Ö","Ú","Ù","Û","Ü","Ý"}
+
+-- Potential future problem: getText (and the json files by proxy) IS case-sensitive.
+-- What this means is that if, say, I change menu to request "QUIT" rather than "Quit", it won't work.
+-- TODO: the JSON files and the getText calls should be standardized for full uppercase
+function getText(str)
+	if (language_data[str]) then
+		return language_data[str]
+	end
+	return str -- If no localization, return original string
+end
+
+function string.upperAccent(str)
+	local ret = string.upper(str)
+	
+	for i = 1, #acc_lower do -- Probably not the most efficient method, but it'll do
+		ret = string.gsub(ret, acc_lower[i], acc_upper[i])
+	end
+	
+	return ret
+end
+
 _lg_print = love.graphics.print
+_lg_printf = love.graphics.printf
 
 function love.graphics.print(...)
 	local args = {...}
 	args[3] = args[3] - 3 -- Y offset due to accents
-	args[1] = string.upper(args[1])
+	args[1] = string.upperAccent( getText(args[1]) ) -- Much easier than manually updating the whole project
 	_lg_print(unpack(args))
+end
+
+function love.graphics.printf(...)
+	local args = {...}
+	args[3] = args[3] - 3 -- Y offset due to accents
+	if (type(args[1]) == "table") then
+		for i = 2, #args[1], 2 do -- It alternates between color and text
+			args[1][i] = string.upperAccent( getText(args[1][i]) )
+		end
+	else
+		args[1] = string.upperAccent( getText(args[1]) )
+	end
+	_lg_printf(unpack(args))
 end
 
 function love.graphics.rectangleLine(x, y, w, h, thickness)

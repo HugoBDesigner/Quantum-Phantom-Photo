@@ -70,11 +70,11 @@ function game:load(_level)
 	self.level_texts_shadows = {}
 	
 	self.level_special_texts = {
-		["01_frame"] = false,
-		["02_quantum"] = false,
-		["03_turn"] = false,
-		["05_together"] = false,
-		["10_end"] = false,
+		["LVL_01_FRAME"] = false,
+		["LVL_02_QUANTUM"] = false,
+		["LVL_03_TURN"] = false,
+		["LVL_05_TOGETHER"] = false,
+		["LVL_10_END"] = false,
 	}
 	
 	if (_level) then
@@ -982,7 +982,7 @@ function game:updatePalette()
 end
 
 function game:processTexts(_lvl_name)
-	local lvl_name = addZeros(self.level)
+	local lvl_name = "LVL_" .. addZeros(self.level)
 	
 	if (_lvl_name) then
 		lvl_name = _lvl_name
@@ -994,38 +994,38 @@ function game:processTexts(_lvl_name)
 	self.level_texts_shadows = {}
 	self.level_texts_shadows2 = {} -- For ending cutscene, ain't got time for pretty code anymore
 	for idx, texts in ipairs{self.level_texts, self.level_texts_shadows, self.level_texts_shadows2} do
-		if (love.filesystem.read("levels/" .. lvl_name .. ".txt")) then
-			table.insert(texts, {})
-			for line in love.filesystem.lines("levels/" .. lvl_name .. ".txt") do
-				if (line == "-") then
-					table.insert(texts, {})
-				else
-					local txt = {}
-					
-					local cur = 1
-					if (string.sub(line, 1, 1) == "[") then
-						cur = 2
-					end
-					for str in string.gmatch(line, "([^%[%]]+)") do
-						table.insert(txt, colors[ (idx == 1 and cur or (idx == 2 and 5-cur or 4) ) ])
-						table.insert(txt, string.upper(str))
-						cur = 3-cur
-					end
-					table.insert(texts[#texts], txt)
+		local txt_arr = getText(lvl_name)
+		table.insert(texts, {})
+		
+		for _, line in ipairs(txt_arr) do
+			if (line == "-") then
+				table.insert(texts, {})
+			else
+				local txt = {}
+				
+				local cur = 1
+				if (string.sub(line, 1, 1) == "[") then
+					cur = 2
 				end
+				for str in string.gmatch(line, "([^%[%]]+)") do
+					table.insert(txt, colors[ (idx == 1 and cur or (idx == 2 and 5-cur or 4) ) ])
+					table.insert(txt, string.upper(str))
+					cur = 3-cur
+				end
+				table.insert(texts[#texts], txt)
 			end
 		end
 	end
 end
 
 function game:playerMoved()
-	if (self.level == 3 and self.level_special_texts["03_turn"] == false) then
+	if (self.level == 3 and self.level_special_texts["LVL_03_TURN"] == false) then
 		if ((self.player.x == 4 and self.player.y == 2) or (self.player.x == 3 and self.player.y == 3)) then
 			self.turnTutorial = self.turnTutorial + 1
 			if (self.turnTutorial >= 4) then
-				game.level_special_texts["03_turn"] = true
+				game.level_special_texts["LVL_03_TURN"] = true
 				game.current_text = 1
-				game:processTexts("03_turn")
+				game:processTexts("LVL_03_TURN")
 			end
 		end
 	end
@@ -1050,25 +1050,25 @@ function game:checkGhosts()
 	end
 	
 	if (not allGhostsLit) then
-		if (self.level == 1 and self.level_special_texts["01_frame"] == false) then
+		if (self.level == 1 and self.level_special_texts["LVL_01_FRAME"] == false) then
 			self.player.post_photo_callback = function()
-				game.level_special_texts["01_frame"] = true
+				game.level_special_texts["LVL_01_FRAME"] = true
 				game.current_text = 1
-				game:processTexts("01_frame")
+				game:processTexts("LVL_01_FRAME")
 			end
-		elseif (self.level == 2 and self.level_special_texts["02_quantum"] == false) then
+		elseif (self.level == 2 and self.level_special_texts["LVL_02_QUANTUM"] == false) then
 			for i, v in ipairs(self.ghosts) do
 				if (v.state == "off" and self.light_map[v.x][v.y].level == 1 and not (v.x == self.player.x and v.y == self.player.y)) then
 					-- Fake ghost was photographed
 					self.player.post_photo_callback = function()
-						game.level_special_texts["02_quantum"] = true
+						game.level_special_texts["LVL_02_QUANTUM"] = true
 						game.current_text = 1
-						game:processTexts("02_quantum")
+						game:processTexts("LVL_02_QUANTUM")
 					end
 					break
 				end
 			end
-		elseif (self.level == 5 and self.level_special_texts["05_together"] == false) then
+		elseif (self.level == 5 and self.level_special_texts["LVL_05_TOGETHER"] == false) then
 			local _has_yes, _has_no = false, false
 			for i, v in ipairs(self.ghosts) do
 				if (v.state == "on" and self.light_map[v.x][v.y].level == 1) then
@@ -1082,9 +1082,9 @@ function game:checkGhosts()
 			end
 			if (_has_yes and _has_no) then
 				self.player.post_photo_callback = function()
-					game.level_special_texts["05_together"] = true
+					game.level_special_texts["LVL_05_TOGETHER"] = true
 					game.current_text = 1
-					game:processTexts("05_together")
+					game:processTexts("LVL_05_TOGETHER")
 				end
 			end
 		end
@@ -1097,9 +1097,9 @@ function game:checkGhosts()
 			hold(1.5, function()
 				if (self.level == 10) then
 					game.game_over = true
-					game.level_special_texts["10_end"] = true
+					game.level_special_texts["LVL_10_END"] = true
 					game.current_text = 1
-					game:processTexts("10_end")
+					game:processTexts("LVL_10_END")
 				else
 					loadState("game", self.level + 1)
 				end
