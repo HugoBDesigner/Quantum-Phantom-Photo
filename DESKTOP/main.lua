@@ -1256,6 +1256,10 @@ function makeTest()
 	testaabb_img = love.graphics.newImage(testaabb)
 end
 
+function math.round(n) -- Round to nearest number. I'm not gonna do that whole "round mode" thing just for this
+	return (n - math.floor(n)) >= .5 and math.ceil(n) or math.floor(n)
+end
+
 acc_lower = {"ã","á","à","â","ä","ç","é","è","ê","ë","í","ì","î","ï","ñ","õ","ó","ò","ô","ö","ú","ù","û","ü","ý"}
 acc_upper = {"Ã","Á","À","Â","Ä","Ç","É","È","Ê","Ë","Í","Ì","Î","Ï","Ñ","Õ","Ó","Ò","Ô","Ö","Ú","Ù","Û","Ü","Ý"}
 

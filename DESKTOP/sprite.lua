@@ -69,8 +69,8 @@ function sprite.new(path, total_frames, frame_duration)
 			tx, ty = game.off_x + tx * game.tile_size, game.off_y + ty * game.tile_size
 		end
 		
-		tx = math.floor(tx)
-		ty = math.floor(ty)
+		tx = math.round(tx)
+		ty = math.round(ty)
 		
 		local an, ox, oy = 0, 0, 0
 		if (angle ~= nil) then
