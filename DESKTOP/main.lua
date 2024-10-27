@@ -7,9 +7,12 @@ sprite = require("sprite")
 sprites = {}
 
 function love.load()
+	IS_WEB = (love.system.getOS() == "Web")
+	
 	game_width = 160
 	game_height = 144
 	scale = 4
+	base_scale = 4
 	love.graphics.setDefaultFilter("nearest", "nearest")
 	screen_canvas = love.graphics.newCanvas(game_width, game_height)
 	
@@ -24,7 +27,10 @@ function love.load()
 		sfx_enabled = true,
 		b_toggle = true,
 		current_language = "EN_US",
+		is_fullscreen = (IS_WEB),
 	}
+	-- INFO: is_fullscreen being IS_WEB is purely to assist with resolution. When running web, it is *never* set to fullscreen in-game. Only externally.
+	
 	SAVE_PATH = "quantum_save.json"
 	for i, v in pairs(save_data) do
 		_G[i] = v
@@ -110,12 +116,12 @@ function love.load()
 	window_height = 180
 	
 	menu_right = {
-		hover_timer = {0, .5, 1},
+		hover_timer = {0, .5, 1, active = false},
 		state = "closed",
 		progress = {0, 1},
 	}
 	menu_left = {
-		hover_timer = {0, .5, 1},
+		hover_timer = {0, .5, 1, active = false},
 		state = "closed",
 		progress = {0, 1},
 	}
@@ -208,6 +214,7 @@ function love.load()
 	loadState(splash)
 	updatePalette()
 	updateVolume()
+	updateFullscreen()
 	updateLanguage()
 	
 	testaabb = love.image.newImageData(window_width*scale, window_height*scale)
@@ -218,21 +225,15 @@ function love.update(dt)
 	dt = math.min(1/20, dt)
 	oscilator = love.timer.getTime()*math.pi
 	
-	if (menu_right.state == "closed" and menu_left.state == "closed") then
-		local mx, my = love.mouse.getPosition()
-		if (mx > 1 and my > 1) then
-			local xx, yy = window_width*scale - 150*scale/4, window_height*scale - 150*scale/4
-			if ( aabb(mx, my, 0, 0, 150*scale/4, 150*scale/4, "tri_left") ) then
-				menu_left.hover_timer[1] = math.min(menu_left.hover_timer[1] + dt, menu_left.hover_timer[3])
-			elseif ( aabb(mx, my, xx, yy, 150*scale/4, 150*scale/4, "tri_right") ) then
-				menu_right.hover_timer[1] = math.min(menu_right.hover_timer[1] + dt, menu_left.hover_timer[3])
-			else
-				menu_right.hover_timer[1] = 0
-				menu_left.hover_timer[1] = 0
-			end
-		end
+	if (menu_right.hover_timer.active) then
+		menu_right.hover_timer[1] = math.min(menu_right.hover_timer[1] + dt, menu_right.hover_timer[3])
 	else
 		menu_right.hover_timer[1] = 0
+	end
+	
+	if (menu_left.hover_timer.active) then
+		menu_left.hover_timer[1] = math.min(menu_left.hover_timer[1] + dt, menu_left.hover_timer[3])
+	else
 		menu_left.hover_timer[1] = 0
 	end
 	
@@ -320,70 +321,43 @@ function love.draw()
 	love.graphics.setCanvas(casing_canvas)
 		love.graphics.clear()
 		love.graphics.setColor( palettes[casing_palette][2] )
-		love.graphics.draw(casing.casing, 0, 0, 0, scale/4, scale/4)
+		love.graphics.draw(casing.casing)
 		love.graphics.setColor( lighten(palettes[casing_palette][4], .1) )
-		love.graphics.draw(casing.backdrop, 0, 0, 0, scale/4, scale/4)
+		love.graphics.draw(casing.backdrop)
 		
 		-- BUTTONS
 		love.graphics.setColor( palettes[casing_palette][3] )
 		if (button_mapping.dpad.up.pressed) then
-			love.graphics.draw(casing.dpad.pressed_up, button_mapping.dpad.left[1]*scale/4, button_mapping.dpad.up[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.dpad.pressed_up, button_mapping.dpad.left[1], button_mapping.dpad.up[2])
 		elseif (button_mapping.dpad.down.pressed) then
-			love.graphics.draw(casing.dpad.pressed_down, button_mapping.dpad.left[1]*scale/4, button_mapping.dpad.up[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.dpad.pressed_down, button_mapping.dpad.left[1], button_mapping.dpad.up[2])
 		elseif (button_mapping.dpad.left.pressed) then
-			love.graphics.draw(casing.dpad.pressed_left, button_mapping.dpad.left[1]*scale/4, button_mapping.dpad.up[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.dpad.pressed_left, button_mapping.dpad.left[1], button_mapping.dpad.up[2])
 		elseif (button_mapping.dpad.right.pressed) then
-			love.graphics.draw(casing.dpad.pressed_right, button_mapping.dpad.left[1]*scale/4, button_mapping.dpad.up[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.dpad.pressed_right, button_mapping.dpad.left[1], button_mapping.dpad.up[2])
 		else
-			love.graphics.draw(casing.dpad.unpressed, button_mapping.dpad.left[1]*scale/4, button_mapping.dpad.up[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.dpad.unpressed, button_mapping.dpad.left[1], button_mapping.dpad.up[2])
 		end
 		
 		if (button_mapping.buttons.b.pressed) then
-			love.graphics.draw(casing.buttons.b_pressed, button_mapping.buttons.b[1]*scale/4, button_mapping.buttons.b[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.buttons.b_pressed, button_mapping.buttons.b[1], button_mapping.buttons.b[2])
 		else
-			love.graphics.draw(casing.buttons.b_unpressed, button_mapping.buttons.b[1]*scale/4, button_mapping.buttons.b[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.buttons.b_unpressed, button_mapping.buttons.b[1], button_mapping.buttons.b[2])
 		end
 		if (button_mapping.buttons.a.pressed) then
-			love.graphics.draw(casing.buttons.a_pressed, button_mapping.buttons.a[1]*scale/4, button_mapping.buttons.a[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.buttons.a_pressed, button_mapping.buttons.a[1], button_mapping.buttons.a[2])
 		else
-			love.graphics.draw(casing.buttons.a_unpressed, button_mapping.buttons.a[1]*scale/4, button_mapping.buttons.a[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.buttons.a_unpressed, button_mapping.buttons.a[1], button_mapping.buttons.a[2])
 		end
 		if (button_mapping.buttons.select.pressed) then
-			love.graphics.draw(casing.buttons.small_pressed, button_mapping.buttons.select[1]*scale/4, button_mapping.buttons.select[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.buttons.small_pressed, button_mapping.buttons.select[1], button_mapping.buttons.select[2])
 		else
-			love.graphics.draw(casing.buttons.small_unpressed, button_mapping.buttons.select[1]*scale/4, button_mapping.buttons.select[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.buttons.small_unpressed, button_mapping.buttons.select[1], button_mapping.buttons.select[2])
 		end
 		if (button_mapping.buttons.start.pressed) then
-			love.graphics.draw(casing.buttons.small_pressed, button_mapping.buttons.start[1]*scale/4, button_mapping.buttons.start[2]*scale/4, 0, scale/4, scale/4)
+			love.graphics.draw(casing.buttons.small_pressed, button_mapping.buttons.start[1], button_mapping.buttons.start[2])
 		else
-			love.graphics.draw(casing.buttons.small_unpressed, button_mapping.buttons.start[1]*scale/4, button_mapping.buttons.start[2]*scale/4, 0, scale/4, scale/4)
-		end
-		
-		love.graphics.push()
-			love.graphics.setScissor((window_width-game_width)/2*scale, (window_height-game_height)/2*scale, game_width*scale, game_height*scale)
-				love.graphics.scale(scale)
-				love.graphics.translate((window_width-game_width)/2, (window_height-game_height)/2)
-				
-				-- BACKGROUND
-				love.graphics.setColor(colors[4])
-				love.graphics.rectangle("fill", 0, 0, screen_canvas:getWidth(), screen_canvas:getHeight())
-				
-				if (state.draw) then
-					love.graphics.setColor(1, 1, 1, 1)
-					love.graphics.draw(screen_canvas)
-				end
-			love.graphics.setScissor()
-		love.graphics.pop()
-		
-		if (grid_opacity > 0) then
-			love.graphics.push()
-				love.graphics.translate((window_width-game_width)/2 * scale, (window_height-game_height)/2 * scale)
-				love.graphics.setBlendMode("add", "premultiplied")
-				overlayPos()
-				love.graphics.setBlendMode("multiply", "premultiplied")
-				overlayNeg()
-				love.graphics.setBlendMode("alpha", "alphamultiply")
-			love.graphics.pop()
+			love.graphics.draw(casing.buttons.small_unpressed, button_mapping.buttons.start[1], button_mapping.buttons.start[2])
 		end
 	love.graphics.setCanvas()
 	
@@ -396,7 +370,7 @@ function love.draw()
 	-- RIGHT SIDE MENU (VOLUME, CASING PALETTE)
 	if (menu_right.state ~= "closed") then
 		r_prog = (menu_right.progress[1] / menu_right.progress[2])^2
-		casing_x_scale = (window_width-(150/4)*r_prog)/window_width
+		casing_x_scale = (window_width-(150/base_scale)*r_prog)/window_width
 		
 		love.graphics.setCanvas(side_menu_canvas)
 			love.graphics.clear()
@@ -432,14 +406,14 @@ function love.draw()
 		
 		local c = 0.5 + (0.5 * r_prog)
 		love.graphics.setColor(c, c, c, 1)
-		love.graphics.draw(side_menu_canvas, window_width*scale-(150/4)*scale*r_prog, 0, 0, scale/4*r_prog, scale/4)
+		love.graphics.draw(side_menu_canvas, window_width*scale-(150/base_scale)*scale*r_prog, 0, 0, scale/base_scale*r_prog, scale/base_scale)
 	end
 	
 	-- LEFT SIDE MENU (GRID, GAME PALETTE)
 	if (menu_left.state ~= "closed") then
 		l_prog = (menu_left.progress[1] / menu_left.progress[2])^2
-		casing_x_scale = (window_width-(150/4)*l_prog)/window_width
-		casing_x = (150/4)*scale*l_prog
+		casing_x_scale = (window_width-(150/base_scale)*l_prog)/window_width
+		casing_x = (150/base_scale)*scale*l_prog
 		
 		love.graphics.setCanvas(side_menu_canvas)
 			love.graphics.clear()
@@ -475,7 +449,7 @@ function love.draw()
 		
 		local c = 0.5 + (0.5 * l_prog)
 		love.graphics.setColor(c, c, c, 1)
-		love.graphics.draw(side_menu_canvas, 0, 0, 0, scale/4*l_prog, scale/4)
+		love.graphics.draw(side_menu_canvas, 0, 0, 0, scale/base_scale*l_prog, scale/base_scale)
 	end
 	
 	-- Draws actual casing, with side menu scaling
@@ -485,21 +459,41 @@ function love.draw()
 	else
 		love.graphics.setColor(1, 1, 1, 1)
 	end
-	love.graphics.draw(casing_canvas, casing_x, 0, 0, casing_x_scale, 1)
+	love.graphics.draw(casing_canvas, casing_x, 0, 0, casing_x_scale*scale/base_scale, scale/base_scale)
+	
+	love.graphics.push()
+		local screen_x = (window_width-game_width)/2 * casing_x_scale * scale + casing_x
+		love.graphics.translate(screen_x, (window_height-game_height)/2 * scale)
+		
+		-- BACKGROUND
+		love.graphics.setColor(colors[4])
+		love.graphics.rectangle("fill", 0, 0, screen_canvas:getWidth() * casing_x_scale*scale, screen_canvas:getHeight() * scale)
+		
+		love.graphics.setColor(1, 1, 1, 1)
+		love.graphics.draw(screen_canvas, 0, 0, 0, casing_x_scale*scale, scale)
+	
+		if (grid_opacity > 0) then
+			love.graphics.setBlendMode("add", "premultiplied")
+			overlayPos(casing_x_scale)
+			love.graphics.setBlendMode("multiply", "premultiplied")
+			overlayNeg(casing_x_scale)
+			love.graphics.setBlendMode("alpha", "alphamultiply")
+		end
+	love.graphics.pop()
 	
 	-- HOVER ARROWS
 	if (r_prog + l_prog == 0) then
-		if (menu_right.hover_timer[1] >= menu_right.hover_timer[2]) then
+		if (menu_right.hover_timer.active and menu_right.hover_timer[1] >= menu_right.hover_timer[2]) then
 			local alpha = (menu_right.hover_timer[1] - menu_right.hover_timer[2]) / (menu_right.hover_timer[3] - menu_right.hover_timer[2])
 			love.graphics.setColor(palettes[casing_palette][2][1], palettes[casing_palette][2][2], palettes[casing_palette][2][3], alpha)
 			
-			love.graphics.draw(casing.arrow_right, window_width*scale - (4+73)/4*scale, window_height*scale - (4+72)/4*scale, 0, scale/4, scale/4)
+			love.graphics.draw(casing.arrow_right, window_width*scale - (4+73)/base_scale*scale, window_height*scale - (4+72)/base_scale*scale, 0, scale/base_scale, scale/base_scale)
 		end
-		if (menu_left.hover_timer[1] >= menu_left.hover_timer[2]) then
+		if (menu_left.hover_timer.active and menu_left.hover_timer[1] >= menu_left.hover_timer[2]) then
 			local alpha = (menu_left.hover_timer[1] - menu_left.hover_timer[2]) / (menu_left.hover_timer[3] - menu_left.hover_timer[2])
 			love.graphics.setColor(palettes[casing_palette][2][1], palettes[casing_palette][2][2], palettes[casing_palette][2][3], alpha)
 			
-			love.graphics.draw(casing.arrow_left, 4/4*scale, 4/4*scale, 0, scale/4, scale/4)
+			love.graphics.draw(casing.arrow_left, 4/base_scale*scale, 4/base_scale*scale, 0, scale/base_scale, scale/base_scale)
 		end
 	end
 	
@@ -508,11 +502,11 @@ function love.draw()
 		love.graphics.setColor(1, 1, 1, .2 * (r_prog + l_prog))
 		for _ = 0, 1 do
 			if (r_prog > 0) then
-				love.graphics.draw(casing.glare_right, 0, 0, 0, casing_x_scale*scale/4, scale/4)
+				love.graphics.draw(casing.glare_right, 0, 0, 0, casing_x_scale*scale/base_scale, scale/base_scale)
 			end
 			
 			if (l_prog > 0) then
-				love.graphics.draw(casing.glare_left, casing_x, 0, 0, casing_x_scale*scale/4, scale/4)
+				love.graphics.draw(casing.glare_left, casing_x, 0, 0, casing_x_scale*scale/base_scale, scale/base_scale)
 			end
 			
 			love.graphics.setBlendMode("add", "premultiplied")
@@ -640,7 +634,8 @@ function button_side_pressed(button)
 			updateGrid()
 			button = "wheel"
 		elseif (button == "wheel") then
-			button_mapping.left_menu[button].y_pressed = love.mouse.getY()
+			local _, yy = mouseTransform(nil, love.mouse.getY())
+			button_mapping.left_menu[button].y_pressed = yy
 			button_mapping.left_menu[button].y_value = grid_opacity
 		else
 			paletteChange("game", (button == "up" and 1 or -1) )
@@ -656,7 +651,8 @@ function button_side_pressed(button)
 			updateVolume()
 			button = "wheel"
 		elseif (button == "wheel") then
-			button_mapping.right_menu[button].y_pressed = love.mouse.getY()
+			local _, yy = mouseTransform(nil, love.mouse.getY())
+			button_mapping.right_menu[button].y_pressed = yy
 			button_mapping.right_menu[button].y_value = volume
 		else
 			paletteChange("casing", (button == "up" and 1 or -1) )
@@ -721,6 +717,13 @@ function love.keypressed(key, scancode, isrepeat)
 		love.audio.stop()
 		love.load()
 		return
+	elseif (key == "f11" and not IS_WEB) then
+		is_fullscreen = not is_fullscreen
+		if (state.processTexts) then
+			state:processTexts()
+		end
+		saveData()
+		updateFullscreen()
 	end
 	
 	if (key == "w" or key == "up") then
@@ -793,6 +796,14 @@ function love.gamepadpressed(joystick, button)
 		else
 			menu_right.state = "opening"
 		end
+	elseif (button == "dpleft") then
+		dpad_pressed("left")
+	elseif (button == "dpright") then
+		dpad_pressed("right")
+	elseif (button == "dpup") then
+		dpad_pressed("up")
+	elseif (button == "dpdown") then
+		dpad_pressed("down")
 	end
 end
 
@@ -805,31 +816,14 @@ function love.gamepadreleased(joystick, button)
 		button_released("start")
 	elseif (button == "select" or button == "back") then
 		button_released("select")
-	end
-end
-
-function love.joystickhat(joystick, hat, direction)
-	-- I don't particularly care for the hat, just the direction
-	if (direction == "c") then
-		if (dpad_lastpressed) then
-			dpad_released(dpad_lastpressed)
-		end
-	elseif (direction == "lu") then
-		dpad_pressed( (dpad_lastpressed == "left") and "up" or "left" )
-	elseif (direction == "ru") then
-		dpad_pressed( (dpad_lastpressed == "right") and "up" or "right" )
-	elseif (direction == "ld") then
-		dpad_pressed( (dpad_lastpressed == "left") and "down" or "left" )
-	elseif (direction == "rd") then
-		dpad_pressed( (dpad_lastpressed == "right") and "down" or "right" )
-	elseif (direction == "l") then
-		dpad_pressed("left")
-	elseif (direction == "r") then
-		dpad_pressed("right")
-	elseif (direction == "u") then
-		dpad_pressed("up")
-	elseif (direction == "d") then
-		dpad_pressed("down")
+	elseif (button == "dpleft") then
+		dpad_released("left")
+	elseif (button == "dpright") then
+		dpad_released("right")
+	elseif (button == "dpup") then
+		dpad_released("up")
+	elseif (button == "dpdown") then
+		dpad_released("down")
 	end
 end
 
@@ -877,16 +871,18 @@ end
 function love.mousepressed(x, y, button, isTouch)
 	if (button ~= 1 and not isTouch) then return end
 	
-	local mx, my = x*4/scale, y*4/scale
+	x, y = mouseTransform(x, y)
+	
+	local mx, my = x*base_scale/scale, y*base_scale/scale
 	if (menu_left.state == "closed" and menu_right.state == "closed") then
-		local xx, yy = window_width*scale - 150*scale/4, window_height*scale - 150*scale/4
-		if ( aabb(mx, my, 0, 0, 150*scale/4, 150*scale/4, "tri_left") ) then
+		local xx, yy = window_width*base_scale - 150, window_height*base_scale - 150
+		if ( aabb(mx, my, 0, 0, 150, 150, "tri_left") ) then
 			menu_left.state = "opening"
-		elseif ( aabb(mx, my, xx, yy, 150*scale/4, 150*scale/4, "tri_right") ) then
+		elseif ( aabb(mx, my, xx, yy, 150, 150, "tri_right") ) then
 			menu_right.state = "opening"
 		end
 	elseif (menu_left.state ~= "closed") then
-		if ( aabb(mx, my, 150, 0, window_width*4 - 150, window_height*4) ) then
+		if ( aabb(mx, my, 150, 0, window_width*base_scale - 150, window_height*base_scale) ) then
 			menu_left.state = "closing"
 		elseif (menu_left.state == "open") then
 			for i, v in pairs(button_mapping.left_menu) do
@@ -898,11 +894,11 @@ function love.mousepressed(x, y, button, isTouch)
 		end
 		return
 	elseif (menu_right.state ~= "closed") then
-		if ( aabb(mx, my, 0, 0, window_width*4 - 150, window_height*4) ) then
+		if ( aabb(mx, my, 0, 0, window_width*base_scale - 150, window_height*base_scale) ) then
 			menu_right.state = "closing"
 		elseif (menu_right.state == "open") then
 			for i, v in pairs(button_mapping.right_menu) do
-				if ( aabb(mx - (window_width*4 - 150), my, v[1], v[2], v[3], v[4], v.shape) ) then
+				if ( aabb(mx - (window_width*base_scale - 150), my, v[1], v[2], v[3], v[4], v.shape) ) then
 					mouse_button_side_pressed = i
 					button_side_pressed(i)
 				end
@@ -935,6 +931,8 @@ end
 function love.mousereleased(x, y, button, isTouch)
 	if (button ~= 1 and not isTouch) then return end
 	
+	x, y = mouseTransform(x, y)
+	
 	if (mouse_dpadpressed) then
 		dpad_released(mouse_dpadpressed)
 		mouse_dpadpressed = nil
@@ -951,9 +949,26 @@ function love.mousereleased(x, y, button, isTouch)
 	end
 end
 
-function love.mousemoved(x, y, dx, dy, istouch)
+function love.mousemoved(x, y, dx, dy, isTouch)
+	x, y = mouseTransform(x, y)
+	
+	if (menu_right.state == "closed" and menu_left.state == "closed" and isTouch == false) then
+		local margin = 1 -- TO-DO: may need to be changed for mobile
+		if (x >= margin and y >= margin and x <= window_width*scale-margin and y <= window_height*scale-margin) then
+			local xx, yy = window_width*scale - 150*scale/base_scale, window_height*scale - 150*scale/base_scale
+			menu_left.hover_timer.active = aabb(x, y, 0, 0, 150*scale/base_scale, 150*scale/base_scale, "tri_left")
+			menu_right.hover_timer.active = aabb(x, y, xx, yy, 150*scale/base_scale, 150*scale/base_scale, "tri_right")
+		else
+			menu_right.hover_timer.active = false
+			menu_left.hover_timer.active = false
+		end
+	else
+		menu_right.hover_timer.active = false
+		menu_left.hover_timer.active = false
+	end
+	
 	if (mouse_button_side_pressed == "wheel") then
-		local min_dist = 150/4*scale
+		local min_dist = 150/base_scale*scale
 		if (menu_left.state == "open") then
 			local dif = math.floor((button_mapping.left_menu.wheel.y_pressed - y) / min_dist * 100)
 			grid_opacity = math.max(0, math.min(100, button_mapping.left_menu.wheel.y_value + dif))
@@ -1034,33 +1049,31 @@ function updateGrid()
 	saveData()
 end
 
-function overlayPos()
+function overlayPos(casing_x_scale)
 	local c1 = math.max(0, math.min(.1, .1*(grid_opacity/100)) )
 	local c2 = math.max(0, math.min(.2, .2*(grid_opacity/100)) )
 	
 	love.graphics.setColor(c1, c1, c1, 1)
-	for x = 0, (game_width-1)*scale, scale do
+	for x = 0, (game_width-1)*scale*casing_x_scale, scale*casing_x_scale do
 		love.graphics.rectangle("fill", x, 0, 1, game_height*scale)
 	end
 	love.graphics.setColor(c2, c2, c2, 1)
 	for y = 0, (game_height-1)*scale, scale do
-		love.graphics.rectangle("fill", 0, y, game_width*scale, 1)
+		love.graphics.rectangle("fill", 0, y, game_width*scale*casing_x_scale, 1)
 	end
 end
 
-function overlayNeg()
+function overlayNeg(casing_x_scale)
 	local c1 = math.max(1 - .1, math.min(1, 1 - (.1*(grid_opacity/100))) )
 	local c2 = math.max(1 - .2, math.min(1, 1 - (.2*(grid_opacity/100))) )
 	
-	if (scale > 1) then
-		love.graphics.setColor(c1, c1, c1, 1)
-		for x = scale-1, (game_width-1)*scale, scale do
-			love.graphics.rectangle("fill", x, 0, 1, game_height*scale)
-		end
-		love.graphics.setColor(c2, c2, c2, 1)
-		for y = scale-1, (game_height-1)*scale, scale do
-			love.graphics.rectangle("fill", 0, y, game_width*scale, 1)
-		end
+	love.graphics.setColor(c1, c1, c1, 1)
+	for x = (scale*casing_x_scale)-1, (game_width-1)*scale*casing_x_scale, scale*casing_x_scale do
+		love.graphics.rectangle("fill", x, 0, 1, game_height*scale)
+	end
+	love.graphics.setColor(c2, c2, c2, 1)
+	for y = scale-1, (game_height-1)*scale, scale do
+		love.graphics.rectangle("fill", 0, y, game_width*scale*casing_x_scale, 1)
 	end
 end
 
@@ -1125,6 +1138,27 @@ function updateLanguage()
 	
 	if (state.processTexts) then
 		state:processTexts()
+	end
+end
+
+function updateFullscreen()
+	if (not IS_WEB) then
+		love.window.setFullscreen(is_fullscreen)
+		display_width, display_height = love.window.getMode()
+	end
+	
+	if (is_fullscreen) then
+		scale = math.min(display_width / window_width, display_height / window_height)
+	else
+		scale = base_scale
+	end
+end
+
+function mouseTransform(x, y)
+	if (is_fullscreen) then
+		return (x and (x / display_width * window_width*scale) or nil), (y and (y / display_height * window_height*scale) or nil)
+	else
+		return x, y
 	end
 end
 
@@ -1295,14 +1329,14 @@ function makeTest()
 			local mx, my = x, y
 			-- local mdown = love.mouse.isDown(1)
 
-			local xx, yy = window_width*scale - 150*scale/4, window_height*scale - 150*scale/4
-			if ( aabb(mx, my, 0, 0, 150*scale/4, 150*scale/4, "tri_left") ) then
+			local xx, yy = window_width*scale - 150*scale/base_scale, window_height*scale - 150*scale/base_scale
+			if ( aabb(mx, my, 0, 0, 150*scale/base_scale, 150*scale/base_scale, "tri_left") ) then
 				-- menu_left.hover_timer[1] = math.min(menu_left.hover_timer[1] + dt, menu_left.hover_timer[3])
 				-- if (mdown) then
 				-- 	menu_left.state = "opening"
 				-- end
 				return 1, 1, 1, 1
-			elseif ( aabb(mx, my, xx, yy, 150*scale/4, 150*scale/4, "tri_right") ) then
+			elseif ( aabb(mx, my, xx, yy, 150*scale/base_scale, 150*scale/base_scale, "tri_right") ) then
 				-- menu_right.hover_timer[1] = math.min(menu_right.hover_timer[1] + dt, menu_left.hover_timer[3])
 				-- if (mdown) then
 				-- 	menu_right.state = "opening"
@@ -1317,10 +1351,10 @@ function makeTest()
 			-- menu_left.hover_timer[1] = 0
 		end
 
-		local mx, my = x*4/scale, y*4/scale
+		local mx, my = x*base_scale/scale, y*base_scale/scale
 
 		if (menu_left.state ~= "closed") then
-			if ( aabb(mx, my, 150, 0, window_width*4 - 150, window_height*4) ) then
+			if ( aabb(mx, my, 150, 0, window_width*base_scale - 150, window_height*base_scale) ) then
 				-- menu_left.state = "closing"
 				return 1, 1, 1, 1
 			elseif (menu_left.state == "open") then
@@ -1334,12 +1368,12 @@ function makeTest()
 			end
 			return 0, 0, 0, 0
 		elseif (menu_right.state ~= "closed") then
-			if ( aabb(mx, my, 0, 0, window_width*4 - 150, window_height*4) ) then
+			if ( aabb(mx, my, 0, 0, window_width*base_scale - 150, window_height*base_scale) ) then
 				-- menu_right.state = "closing"
 				return 1, 1, 1, 1
 			elseif (menu_right.state == "open") then
 				for i, v in pairs(button_mapping.right_menu) do
-					if ( aabb(mx - (window_width*4 - 150), my, v[1], v[2], v[3], v[4], v.shape) ) then
+					if ( aabb(mx - (window_width*base_scale - 150), my, v[1], v[2], v[3], v[4], v.shape) ) then
 						-- mouse_button_side_pressed = i
 						-- button_side_pressed(i)
 						return 1, 1, 1, 1
@@ -1370,6 +1404,15 @@ function makeTest()
 		return 0, 0, 0, 0
 	end)
 	testaabb_img = love.graphics.newImage(testaabb)
+end
+
+function table.find(t, entry) -- Am I going crazy? Didn't I already write this??
+	for idx, v in ipairs(t) do
+		if (v == entry) then
+			return idx
+		end
+	end
+	return nil
 end
 
 function math.round(n) -- Round to nearest number. I'm not gonna do that whole "round mode" thing just for this

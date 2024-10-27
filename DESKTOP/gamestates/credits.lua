@@ -60,7 +60,7 @@ function credits:processTexts()
 			{primary, "USING:"}, {secondary, "LOVE2D"},
 		}
 		
-		if (love.system.getOS() == "Web") then
+		if (IS_WEB) then
 			table.insert(self[tab], {primary, "       "})
 			table.insert(self[tab], {secondary, "LOVE.JS"})
 			table.insert(self[tab], {primary, "       "})
