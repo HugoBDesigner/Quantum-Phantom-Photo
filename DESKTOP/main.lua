@@ -528,20 +528,46 @@ function love.draw()
 end
 
 function dpad_pressed(dir)
-	if (menu_left.state ~= "closed" or menu_right.state ~= "closed") then return end
 	if (hold_timer.timer > 0) then return end
-	if (button_mapping.dpad[dir].pressed) then return end
 	
 	if (dpad_lastpressed) then
 		dpad_released(dpad_lastpressed)
 	end
 	dpad_lastpressed = dir
 	
+	if (menu_left.state ~= "closed" or menu_right.state ~= "closed") then
+		if (dir == "up") then
+			button_side_pressed("up")
+		elseif (dir == "down") then
+			button_side_pressed("down")
+		elseif (dir == "left") then
+			button_side_pressed("wheel_down")
+		elseif (dir == "right") then
+			button_side_pressed("wheel_up")
+		end
+		
+		return
+	end
+	
+	if (button_mapping.dpad[dir].pressed) then return end
+	
 	button_mapping.dpad[dir].pressed = true
 	if (state.dpad_pressed) then state:dpad_pressed(dir) end
 end
 
 function dpad_released(dir)
+	if (menu_left.state ~= "closed" or menu_right.state ~= "closed") then
+		if (dir == "up") then
+			button_side_released("up")
+		elseif (dir == "down") then
+			button_side_released("down")
+		elseif (dir == "left") then
+			button_side_released("wheel_down")
+		elseif (dir == "right") then
+			button_side_released("wheel_up")
+		end
+	end
+	
 	if (not button_mapping.dpad[dir].pressed) then return end
 	
 	dpad_lastpressed = nil
@@ -653,6 +679,14 @@ function button_side_isDown(button)
 	return button_mapping.left_menu[button].pressed or button_mapping.right_menu[button].pressed
 end
 
+function close_menus()
+	if (menu_left.state ~= "closed") then
+		menu_left.state = "closing"
+	elseif (menu_right.state ~= "closed") then
+		menu_right.state = "closing"
+	end
+end
+
 function love.keypressed(key, scancode, isrepeat)
 	local ctrlpressed = (love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl"))
 	local shiftpressed = (love.keyboard.isDown("lshift") or love.keyboard.isDown("rshift"))
@@ -691,25 +725,17 @@ function love.keypressed(key, scancode, isrepeat)
 	
 	if (key == "w" or key == "up") then
 		dpad_pressed("up")
-		button_side_pressed("up")
 	elseif (key == "s" or key == "down") then
 		dpad_pressed("down")
-		button_side_pressed("down")
 	elseif (key == "a" or key == "left") then
 		dpad_pressed("left")
-		button_side_pressed("wheel_up")
 	elseif (key == "d" or key == "right") then
 		dpad_pressed("right")
-		button_side_pressed("wheel_down")
 	end
 	
 	if (key == "escape" or key == "enter" or key == "return" or key == "kpenter") then
 		button_pressed("start")
-		if (menu_left.state ~= "closed") then
-			menu_left.state = "closing"
-		elseif (menu_right.state ~= "closed") then
-			menu_right.state = "closing"
-		end
+		close_menus()
 	elseif (key == "c" or key == "l") then
 		button_pressed("select")
 	elseif (key == "z" or key == "j" or key == "lshift" or key == "rshift" or key == "backspace") then
@@ -723,16 +749,12 @@ end
 function love.keyreleased(key, scancode, isrepeat)
 	if (key == "w" or key == "up") then
 		dpad_released("up")
-		button_side_released("up")
 	elseif (key == "s" or key == "down") then
 		dpad_released("down")
-		button_side_released("down")
 	elseif (key == "a" or key == "left") then
 		dpad_released("left")
-		button_side_released("wheel_up")
 	elseif (key == "d" or key == "right") then
 		dpad_released("right")
-		button_side_released("wheel_down")
 	end
 	
 	if (key == "escape" or key == "enter" or key == "return" or key == "kpenter") then
@@ -743,6 +765,112 @@ function love.keyreleased(key, scancode, isrepeat)
 		button_released("b")
 	elseif (key == "x" or key == "k" or key == "space") then
 		button_released("a")
+	end
+end
+
+function love.gamepadpressed(joystick, button)
+	if (button == "a" or button == "y") then
+		button_pressed("a")
+		close_menus()
+	elseif (button == "b" or button == "x") then
+		button_pressed("b")
+		close_menus()
+	elseif (button == "start") then
+		button_pressed("start")
+		close_menus()
+	elseif (button == "select" or button == "back") then
+		button_pressed("select")
+		close_menus()
+	elseif (button == "leftshoulder") then
+		if (menu_right.state ~= "closed" or menu_left.state ~= "closed") then
+			close_menus()
+		else
+			menu_left.state = "opening"
+		end
+	elseif (button == "rightshoulder") then
+		if (menu_left.state ~= "closed" or menu_right.state ~= "closed") then
+			close_menus()
+		else
+			menu_right.state = "opening"
+		end
+	end
+end
+
+function love.gamepadreleased(joystick, button)
+	if (button == "a" or button == "y") then
+		button_released("a")
+	elseif (button == "b" or button == "x") then
+		button_released("b")
+	elseif (button == "start") then
+		button_released("start")
+	elseif (button == "select" or button == "back") then
+		button_released("select")
+	end
+end
+
+function love.joystickhat(joystick, hat, direction)
+	-- I don't particularly care for the hat, just the direction
+	if (direction == "c") then
+		if (dpad_lastpressed) then
+			dpad_released(dpad_lastpressed)
+		end
+	elseif (direction == "lu") then
+		dpad_pressed( (dpad_lastpressed == "left") and "up" or "left" )
+	elseif (direction == "ru") then
+		dpad_pressed( (dpad_lastpressed == "right") and "up" or "right" )
+	elseif (direction == "ld") then
+		dpad_pressed( (dpad_lastpressed == "left") and "down" or "left" )
+	elseif (direction == "rd") then
+		dpad_pressed( (dpad_lastpressed == "right") and "down" or "right" )
+	elseif (direction == "l") then
+		dpad_pressed("left")
+	elseif (direction == "r") then
+		dpad_pressed("right")
+	elseif (direction == "u") then
+		dpad_pressed("up")
+	elseif (direction == "d") then
+		dpad_pressed("down")
+	end
+end
+
+gamepad_axis = {deadzone = 0.2}
+function love.gamepadaxis(joystick, axis, value)
+	local id = joystick:getID()
+	
+	if (not gamepad_axis[id]) then
+		gamepad_axis[id] = {x = 0, y = 0, dir = false}
+	end
+	
+	if (axis == "leftx" or axis == "lefty") then -- Ignore right stick for direction
+		if (axis == "leftx") then
+			gamepad_axis[id].x = value
+		elseif (axis == "lefty") then
+			gamepad_axis[id].y = value
+		end
+		
+		local new_dir
+		local dist = math.sqrt(gamepad_axis[id].x ^ 2 + gamepad_axis[id].y ^ 2)
+		if (dist >= gamepad_axis.deadzone) then
+			if (math.abs(gamepad_axis[id].x) >= math.abs(gamepad_axis[id].y)) then -- Horizontal movement
+				new_dir = ( (gamepad_axis[id].x >= 0) and "right" or "left" )
+			else -- Vertical movement
+				new_dir = ( (gamepad_axis[id].y >= 0) and "down" or "up" )
+			end
+		else
+			new_dir = false
+		end
+		
+		if (new_dir ~= gamepad_axis[id].dir) then
+			gamepad_axis[id].dir = new_dir
+			if (new_dir) then
+				-- I *could* do trig to get the angle. But realistically, we only need to check which direction is bigger
+				dpad_pressed(new_dir)
+			else
+				if (dpad_lastpressed) then
+					dpad_released(dpad_lastpressed)
+				end
+			end
+		end
 	end
 end
 
@@ -856,18 +984,6 @@ function love.wheelmoved(x, y)
 		end
 		updateVolume()
 	end
-end
-
-function love.joystickpressed(joystick, button)
-	-- TODO
-end
-
-function love.joystickreleased(joystick, button)
-	-- TODO
-end
-
-function love.joystickhat(joystick, hat, direction)
-	-- TODO
 end
 
 function aabb(mx, my, x, y, w, h, shape)
