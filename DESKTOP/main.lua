@@ -736,7 +736,8 @@ function love.keypressed(key, scancode, isrepeat)
 		dpad_pressed("right")
 	end
 	
-	if (key == "escape" or key == "enter" or key == "return" or key == "kpenter") then
+	-- "escape" on web is for exiting fullscreen
+	if (key == "enter" or key == "return" or key == "kpenter" or (key == "escape" and not IS_WEB) ) then
 		button_pressed("start")
 		close_menus()
 	elseif (key == "c" or key == "l") then

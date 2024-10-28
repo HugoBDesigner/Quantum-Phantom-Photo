@@ -1,4 +1,4 @@
-has_fullscreen = 1 -- (IS_WEB and 0 or 1)
+has_fullscreen = (IS_WEB and 0 or 1)
 options = {}
 
 function options:load(_in_game)
