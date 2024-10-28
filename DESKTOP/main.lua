@@ -9,6 +9,10 @@ sprites = {}
 function love.load()
 	IS_WEB = (love.system.getOS() == "Web")
 	
+	-- These exist for mobile mainly (desktop MAY benefit though)
+	display_x = 0
+	display_y = 0
+	
 	game_width = 160
 	game_height = 144
 	scale = 4
@@ -282,7 +286,7 @@ function love.update(dt)
 	if (state.update) then state:update(dt) end
 end
 
-function love.draw()
+function updateCanvases()
 	-- GETTING STATE IMAGE
 	if (state.draw) then
 		love.graphics.setCanvas(screen_canvas)
@@ -362,15 +366,12 @@ function love.draw()
 	love.graphics.setCanvas()
 	
 	-- SIDE MENUS
-	local casing_x = 0
-	local casing_x_scale = 1
 	local r_prog = 0
 	local l_prog = 0
 	
 	-- RIGHT SIDE MENU (VOLUME, CASING PALETTE)
 	if (menu_right.state ~= "closed") then
 		r_prog = (menu_right.progress[1] / menu_right.progress[2])^2
-		casing_x_scale = (window_width-(150/base_scale)*r_prog)/window_width
 		
 		love.graphics.setCanvas(side_menu_canvas)
 			love.graphics.clear()
@@ -403,17 +404,11 @@ function love.draw()
 			love.graphics.draw(knob_canvas, knob_x - knob_x_off, knob_y, 0, 0.5 + knob_x_scale, 1)
 			love.graphics.setScissor()
 		love.graphics.setCanvas()
-		
-		local c = 0.5 + (0.5 * r_prog)
-		love.graphics.setColor(c, c, c, 1)
-		love.graphics.draw(side_menu_canvas, window_width*scale-(150/base_scale)*scale*r_prog, 0, 0, scale/base_scale*r_prog, scale/base_scale)
 	end
 	
 	-- LEFT SIDE MENU (GRID, GAME PALETTE)
 	if (menu_left.state ~= "closed") then
 		l_prog = (menu_left.progress[1] / menu_left.progress[2])^2
-		casing_x_scale = (window_width-(150/base_scale)*l_prog)/window_width
-		casing_x = (150/base_scale)*scale*l_prog
 		
 		love.graphics.setCanvas(side_menu_canvas)
 			love.graphics.clear()
@@ -446,6 +441,34 @@ function love.draw()
 			love.graphics.draw(knob_canvas, knob_x - knob_x_off, knob_y, 0, 0.5 + knob_x_scale, 1)
 			love.graphics.setScissor()
 		love.graphics.setCanvas()
+	end
+end
+
+function love.draw()
+	updateCanvases()
+	
+	love.graphics.push()
+	love.graphics.translate(display_x, display_y)
+	
+	-- SIDE MENUS
+	local casing_x = 0
+	local casing_x_scale = 1
+	local r_prog = 0
+	local l_prog = 0
+	
+	if (menu_right.state ~= "closed") then
+		r_prog = (menu_right.progress[1] / menu_right.progress[2])^2
+		casing_x_scale = (window_width-(150/base_scale)*r_prog)/window_width
+		
+		local c = 0.5 + (0.5 * r_prog)
+		love.graphics.setColor(c, c, c, 1)
+		love.graphics.draw(side_menu_canvas, window_width*scale-(150/base_scale)*scale*r_prog, 0, 0, scale/base_scale*r_prog, scale/base_scale)
+	end
+	
+	if (menu_left.state ~= "closed") then
+		l_prog = (menu_left.progress[1] / menu_left.progress[2])^2
+		casing_x_scale = (window_width-(150/base_scale)*l_prog)/window_width
+		casing_x = (150/base_scale)*scale*l_prog
 		
 		local c = 0.5 + (0.5 * l_prog)
 		love.graphics.setColor(c, c, c, 1)
@@ -519,6 +542,18 @@ function love.draw()
 		love.graphics.setColor(1, 0.5, 0.5, 0.8)
 		love.graphics.draw(testaabb_img)
 	end
+	
+	if (DEBUG_PRINTER and DEBUG_PRINTER ~= "") then
+		local txt = string.upper(DEBUG_PRINTER)
+		local margin = 2
+		love.graphics.setColor(0, 0, 0, 1)
+		love.graphics.rectangle("fill", 0, 0, love.graphics.getFont():getWidth(txt) + 2*margin, love.graphics.getFont():getHeight() + 2*margin)
+		
+		love.graphics.setColor(1, 1, 1, 1)
+		love.graphics.print(txt, margin, margin + 3)
+	end
+	
+	love.graphics.pop()
 end
 
 function dpad_pressed(dir)
@@ -869,8 +904,18 @@ function love.gamepadaxis(joystick, axis, value)
 	end
 end
 
+function love.touchpressed( id, x, y, dx, dy, pressure )
+	love.mousepressed(x, y, 1, false)
+end
+
+function love.touchreleased( id, x, y, dx, dy, pressure )
+	love.mousereleased(x, y, 1, false)
+end
+
 function love.mousepressed(x, y, button, isTouch)
-	if (button ~= 1 and not isTouch) then return end
+	if (isTouch) then return end
+	
+	if (button ~= 1) then return end
 	
 	x, y = mouseTransform(x, y)
 	
@@ -930,7 +975,8 @@ function love.mousepressed(x, y, button, isTouch)
 end
 
 function love.mousereleased(x, y, button, isTouch)
-	if (button ~= 1 and not isTouch) then return end
+	if (isTouch) then return end
+	if (button ~= 1) then return end
 	
 	x, y = mouseTransform(x, y)
 	
@@ -951,6 +997,8 @@ function love.mousereleased(x, y, button, isTouch)
 end
 
 function love.mousemoved(x, y, dx, dy, isTouch)
+	if (isTouch) then return end
+	
 	x, y = mouseTransform(x, y)
 	
 	if (menu_right.state == "closed" and menu_left.state == "closed" and isTouch == false) then
@@ -1148,6 +1196,32 @@ function updateFullscreen()
 		display_width, display_height = love.window.getMode()
 	end
 	
+	-- IDEALLY this function should be called ONCE on web
+	local _, _, flags = love.window.getMode()
+	local _width, _height = love.window.getDesktopDimensions(flags.display)
+	-- 880 396
+	local _default_aspect = 16/9
+	local _cur_aspect = _width/_height
+	
+	if (_cur_aspect >= _default_aspect) then -- Width is greater
+		display_height = display_height / _cur_aspect * _default_aspect
+		display_width = display_height / 9 * 16
+		
+		-- May seem backwards, but mobile dimensions are... weird, in a sense.
+		-- We're calculating what the width "should" have been originally, even if in reality it wasn't that,
+		-- because we're calculating it based on aspect ratio and not real dimensions
+		local _old_width = display_width / _default_aspect * _cur_aspect
+		
+		display_x = math.floor( (_old_width - display_width)/2 )
+	else -- Height is greater
+		display_width = display_width / _cur_aspect * _default_aspect
+		display_height = display_height / 16 * 9
+		
+		local _old_height = display_height / _default_aspect * _cur_aspect
+		
+		display_y = math.floor( (_old_height - display_height)/2 )
+	end
+	
 	if (is_fullscreen) then
 		scale = math.min(display_width / window_width, display_height / window_height)
 	else
@@ -1156,6 +1230,9 @@ function updateFullscreen()
 end
 
 function mouseTransform(x, y)
+	x = x - display_x
+	y = y - display_y
+	
 	if (is_fullscreen) then
 		return (x and (x / display_width * window_width*scale) or nil), (y and (y / display_height * window_height*scale) or nil)
 	else
