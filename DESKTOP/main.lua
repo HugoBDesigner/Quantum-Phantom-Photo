@@ -656,7 +656,7 @@ function button_isDown(button)
 	return button_mapping.buttons[button].pressed
 end
 
-function button_side_pressed(button)
+function button_side_pressed(button, yy)
 	if (menu_left.state ~= "open" and menu_right.state ~= "open") then return end
 	
 	if (menu_left.state == "open") then
@@ -669,7 +669,6 @@ function button_side_pressed(button)
 			updateGrid()
 			button = "wheel"
 		elseif (button == "wheel") then
-			local _, yy = mouseTransform(nil, love.mouse.getY())
 			button_mapping.left_menu[button].y_pressed = yy
 			button_mapping.left_menu[button].y_value = grid_opacity
 		else
@@ -686,7 +685,6 @@ function button_side_pressed(button)
 			updateVolume()
 			button = "wheel"
 		elseif (button == "wheel") then
-			local _, yy = mouseTransform(nil, love.mouse.getY())
 			button_mapping.right_menu[button].y_pressed = yy
 			button_mapping.right_menu[button].y_value = volume
 		else
@@ -918,49 +916,59 @@ function love.gamepadaxis(joystick, axis, value)
 	end
 end
 
+touch_pressed = {}
 function love.touchpressed( id, x, y, dx, dy, pressure )
-	love.mousepressed(x, y, 1, false)
+	touch_pressed[id] = {x = x, y = y, pressed = true}
+	love.mousepressed(x, y, 1, false, true)
 end
 
 function love.touchreleased( id, x, y, dx, dy, pressure )
-	love.mousereleased(x, y, 1, false)
+	touch_pressed[id] = {x = x, y = y, pressed = false}
+	love.mousereleased(x, y, 1, false, true)
 end
 
-function love.mousepressed(x, y, button, isTouch)
+function love.touchmoved(id, x, y, dx, dy, pressure)
+	if (touch_pressed[id] and touch_pressed[id].pressed) then
+		love.mousemoved(x, y, dx, dy, false, true)
+	end
+end
+
+function love.mousepressed(x, y, button, isTouch, touchProxy)
 	if (isTouch) then return end
 	
 	if (button ~= 1) then return end
 	
 	x, y = mouseTransform(x, y)
+	-- touchProxy = true -- DEBUG
 	
 	local mx, my = x*base_scale/scale, y*base_scale/scale
 	if (menu_left.state == "closed" and menu_right.state == "closed") then
 		local xx, yy = window_width*base_scale - 150, window_height*base_scale - 150
-		if ( aabb(mx, my, 0, 0, 150, 150, "tri_left") ) then
+		if ( aabb(mx, my, 0, 0, 150, 150, "tri_left", touchProxy) ) then
 			menu_left.state = "opening"
-		elseif ( aabb(mx, my, xx, yy, 150, 150, "tri_right") ) then
+		elseif ( aabb(mx, my, xx, yy, 150, 150, "tri_right", touchProxy) ) then
 			menu_right.state = "opening"
 		end
 	elseif (menu_left.state ~= "closed") then
-		if ( aabb(mx, my, 150, 0, window_width*base_scale - 150, window_height*base_scale) ) then
+		if ( aabb(mx, my, 150, 0, window_width*base_scale - 150, window_height*base_scale) ) then -- Closing side menu doesn't have touch proxy
 			menu_left.state = "closing"
 		elseif (menu_left.state == "open") then
 			for i, v in pairs(button_mapping.left_menu) do
-				if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape) ) then
+				if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 					mouse_button_side_pressed = i
-					button_side_pressed(i)
+					button_side_pressed(i, y)
 				end
 			end
 		end
 		return
 	elseif (menu_right.state ~= "closed") then
-		if ( aabb(mx, my, 0, 0, window_width*base_scale - 150, window_height*base_scale) ) then
+		if ( aabb(mx, my, 0, 0, window_width*base_scale - 150, window_height*base_scale) ) then -- Closing side menu doesn't have touch proxy
 			menu_right.state = "closing"
 		elseif (menu_right.state == "open") then
 			for i, v in pairs(button_mapping.right_menu) do
-				if ( aabb(mx - (window_width*base_scale - 150), my, v[1], v[2], v[3], v[4], v.shape) ) then
+				if ( aabb(mx - (window_width*base_scale - 150), my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 					mouse_button_side_pressed = i
-					button_side_pressed(i)
+					button_side_pressed(i, y)
 				end
 			end
 		end
@@ -968,7 +976,7 @@ function love.mousepressed(x, y, button, isTouch)
 	end
 	
 	for i, v in pairs(button_mapping.dpad) do
-		if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape) ) then
+		if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 			mouse_dpadpressed = i
 			dpad_pressed(i)
 			break
@@ -976,7 +984,7 @@ function love.mousepressed(x, y, button, isTouch)
 	end
 	
 	for i, v in pairs(button_mapping.buttons) do
-		if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape) ) then
+		if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 			mouse_buttonpressed = i
 			button_pressed(i)
 			
@@ -988,11 +996,12 @@ function love.mousepressed(x, y, button, isTouch)
 	end
 end
 
-function love.mousereleased(x, y, button, isTouch)
+function love.mousereleased(x, y, button, isTouch, touchProxy)
 	if (isTouch) then return end
 	if (button ~= 1) then return end
 	
 	x, y = mouseTransform(x, y)
+	-- touchProxy = true -- DEBUG
 	
 	if (mouse_dpadpressed) then
 		dpad_released(mouse_dpadpressed)
@@ -1010,24 +1019,27 @@ function love.mousereleased(x, y, button, isTouch)
 	end
 end
 
-function love.mousemoved(x, y, dx, dy, isTouch)
+function love.mousemoved(x, y, dx, dy, isTouch, touchProxy)
 	if (isTouch) then return end
 	
 	x, y = mouseTransform(x, y)
+	-- touchProxy = true -- DEBUG
 	
-	if (menu_right.state == "closed" and menu_left.state == "closed" and isTouch == false) then
-		local margin = 1 -- TO-DO: may need to be changed for mobile
-		if (x >= margin and y >= margin and x <= window_width*scale-margin and y <= window_height*scale-margin) then
-			local xx, yy = window_width*scale - 150*scale/base_scale, window_height*scale - 150*scale/base_scale
-			menu_left.hover_timer.active = aabb(x, y, 0, 0, 150*scale/base_scale, 150*scale/base_scale, "tri_left")
-			menu_right.hover_timer.active = aabb(x, y, xx, yy, 150*scale/base_scale, 150*scale/base_scale, "tri_right")
+	if (not touchProxy) then
+		if (menu_right.state == "closed" and menu_left.state == "closed") then
+			local margin = 1
+			if (x >= margin and y >= margin and x <= window_width*scale-margin and y <= window_height*scale-margin) then
+				local xx, yy = window_width*scale - 150*scale/base_scale, window_height*scale - 150*scale/base_scale
+				menu_left.hover_timer.active = aabb(x, y, 0, 0, 150*scale/base_scale, 150*scale/base_scale, "tri_left")
+				menu_right.hover_timer.active = aabb(x, y, xx, yy, 150*scale/base_scale, 150*scale/base_scale, "tri_right")
+			else
+				menu_right.hover_timer.active = false
+				menu_left.hover_timer.active = false
+			end
 		else
 			menu_right.hover_timer.active = false
 			menu_left.hover_timer.active = false
 		end
-	else
-		menu_right.hover_timer.active = false
-		menu_left.hover_timer.active = false
 	end
 	
 	if (mouse_button_side_pressed == "wheel") then
@@ -1064,7 +1076,13 @@ function love.wheelmoved(x, y)
 	end
 end
 
-function aabb(mx, my, x, y, w, h, shape)
+function aabb(mx, my, x, y, w, h, shape, touchProxy)
+	local margin = (touchProxy and 20*scale/base_scale or 0) -- Make touch more forgiving
+	x = x - margin
+	y = y - margin
+	w = w + margin*2
+	h = h + margin*2
+	
 	local bb = mx >= x and mx < x+w and my >= y and my < y+h
 	
 	if (bb) then
@@ -1244,11 +1262,8 @@ function updateFullscreen()
 end
 
 function mouseTransform(x, y)
-	x = x - display_x
-	y = y - display_y
-	
 	if (is_fullscreen) then
-		return (x and (x / display_width * window_width*scale) or nil), (y and (y / display_height * window_height*scale) or nil)
+		return (x and (x / display_width * window_width*scale - display_x) or nil), (y and (y / display_height * window_height*scale - display_y) or nil)
 	else
 		return x, y
 	end
@@ -1415,6 +1430,7 @@ function makeTest()
 		testaabb_img = nil
 		return
 	end
+	local touchProxy = false -- FOR DEBUG REASONS
 	testaabb:mapPixel(function(x, y, r, g, b, a)
 		if (menu_right.state == "closed" and menu_left.state == "closed") then
 			-- local mx, my = love.mouse.getPosition()
@@ -1422,13 +1438,13 @@ function makeTest()
 			-- local mdown = love.mouse.isDown(1)
 
 			local xx, yy = window_width*scale - 150*scale/base_scale, window_height*scale - 150*scale/base_scale
-			if ( aabb(mx, my, 0, 0, 150*scale/base_scale, 150*scale/base_scale, "tri_left") ) then
+			if ( aabb(mx, my, 0, 0, 150*scale/base_scale, 150*scale/base_scale, "tri_left", touchProxy) ) then
 				-- menu_left.hover_timer[1] = math.min(menu_left.hover_timer[1] + dt, menu_left.hover_timer[3])
 				-- if (mdown) then
 				-- 	menu_left.state = "opening"
 				-- end
 				return 1, 1, 1, 1
-			elseif ( aabb(mx, my, xx, yy, 150*scale/base_scale, 150*scale/base_scale, "tri_right") ) then
+			elseif ( aabb(mx, my, xx, yy, 150*scale/base_scale, 150*scale/base_scale, "tri_right", touchProxy) ) then
 				-- menu_right.hover_timer[1] = math.min(menu_right.hover_timer[1] + dt, menu_left.hover_timer[3])
 				-- if (mdown) then
 				-- 	menu_right.state = "opening"
@@ -1446,12 +1462,12 @@ function makeTest()
 		local mx, my = x*base_scale/scale, y*base_scale/scale
 
 		if (menu_left.state ~= "closed") then
-			if ( aabb(mx, my, 150, 0, window_width*base_scale - 150, window_height*base_scale) ) then
+			if ( aabb(mx, my, 150, 0, window_width*base_scale - 150, window_height*base_scale) ) then -- Closing side menu doesn't have touch proxy
 				-- menu_left.state = "closing"
 				return 1, 1, 1, 1
 			elseif (menu_left.state == "open") then
 				for i, v in pairs(button_mapping.left_menu) do
-					if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape) ) then
+					if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 						-- mouse_button_side_pressed = i
 						-- button_side_pressed(i)
 						return 1, 1, 1, 1
@@ -1460,12 +1476,12 @@ function makeTest()
 			end
 			return 0, 0, 0, 0
 		elseif (menu_right.state ~= "closed") then
-			if ( aabb(mx, my, 0, 0, window_width*base_scale - 150, window_height*base_scale) ) then
+			if ( aabb(mx, my, 0, 0, window_width*base_scale - 150, window_height*base_scale) ) then -- Closing side menu doesn't have touch proxy
 				-- menu_right.state = "closing"
 				return 1, 1, 1, 1
 			elseif (menu_right.state == "open") then
 				for i, v in pairs(button_mapping.right_menu) do
-					if ( aabb(mx - (window_width*base_scale - 150), my, v[1], v[2], v[3], v[4], v.shape) ) then
+					if ( aabb(mx - (window_width*base_scale - 150), my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 						-- mouse_button_side_pressed = i
 						-- button_side_pressed(i)
 						return 1, 1, 1, 1
@@ -1476,7 +1492,7 @@ function makeTest()
 		end
 
 		for i, v in pairs(button_mapping.dpad) do
-			if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape) ) then
+			if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 				-- mouse_dpadpressed = i
 				-- dpad_pressed(i)
 				-- break
@@ -1485,7 +1501,7 @@ function makeTest()
 		end
 
 		for i, v in pairs(button_mapping.buttons) do
-			if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape) ) then
+			if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
 				-- mouse_buttonpressed = i
 				-- button_pressed(i)
 				-- break
