@@ -727,7 +727,7 @@ function love.keypressed(key, scancode, isrepeat)
 		if (not altpressed) then
 			if (key == "f1") then
 				makeTest()
-			elseif (key == "f5") then
+			elseif (key == "f5" and not IS_WEB) then
 				-- Hard reset: destroys the save file
 				love.graphics.clear() -- Deliberately flash the screen to indicate the reset
 				love.graphics.present()
@@ -745,7 +745,7 @@ function love.keypressed(key, scancode, isrepeat)
 				loadState("game", num)
 			end
 		end
-	elseif (key == "f5") then
+	elseif (key == "f5" and not IS_WEB) then
 		-- Soft reset: preserves the save file
 		love.graphics.clear() -- Deliberately flash the screen to indicate the reset
 		love.graphics.present()
@@ -782,6 +782,20 @@ function love.keypressed(key, scancode, isrepeat)
 		-- toggle_pressedb()
 	elseif (key == "x" or key == "k" or key == "space") then
 		button_pressed("a")
+	end
+	
+	if (key == "]" or (key == "tab" and not shiftpressed)) then
+		if (menu_left.state ~= "closed" or menu_right.state ~= "closed") then
+			close_menus()
+		else
+			menu_right.state = "opening"
+		end
+	elseif (key == "[" or (key == "tab" and shiftpressed)) then
+		if (menu_right.state ~= "closed" or menu_left.state ~= "closed") then
+			close_menus()
+		else
+			menu_left.state = "opening"
+		end
 	end
 end
 
