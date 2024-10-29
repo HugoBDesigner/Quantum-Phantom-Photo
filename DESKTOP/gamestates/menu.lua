@@ -5,8 +5,8 @@ function menu:load(_selection)
 	self.options = {
 		{text = "Continue game", disabled = true},
 		{text = "New game"},
-		{text = "Options"},
-		{text = "Credits"},
+		{text = "Options_MENU"},
+		{text = "Credits_MENU"},
 		{text = "Quit"},
 	}
 	
@@ -30,7 +30,8 @@ function menu:draw()
 	
 	-- Version number
 	love.graphics.setFont(version_font)
-	love.graphics.printf("v" .. VERSION, margin + 1, line_yy - 6, game_width - 2*margin, "right" )
+	-- Here we use the original love.graphics.print because the version string should NOT be changed
+	_lg_printf("v" .. VERSION, margin + 1, line_yy - 6, game_width - 2*margin, "right" )
 	
 	-- Divider line
 	love.graphics.rectangle("fill", margin, line_yy, game_width - 2*margin, 1)
@@ -51,7 +52,7 @@ function menu:draw()
 			love.graphics.setColor(colors[4])
 			love.graphics.print(v.text, 1 + margin_left, game_height - margin_bottom - hh - #self.options * hh + (i-1)*hh)
 		else
-			local txt = v.text
+			local txt = getText(v.text)
 			if (self.selection == i) then
 				txt = "> " .. txt
 			end
