@@ -10,10 +10,11 @@
 **🆕 NEW FEATURES!**
 - Added Brazilian Portuguese localization! Use the `Options` menu or the `Pause` menu to change language;
 - Added controller/gamepad/joystick support! Not all controllers may work correctly;
-- Added mobile and touchscreen support! The game may run slower on mobile.
+- Added mobile and touchscreen support! The game may run slower on mobile;
+- Added fullscreen mode! Toggle it in the `Options` or `Pause` menu in the desktop version (or press F11). Use the bottom-right corner button for the web version.
 
 **⚠ Known Issues:**  
-- `[Web version]` Keyboard support is faulty on Chrome/Edge. After clicking "Run Game", don't use your mouse. Interact with the keyboard (and use WASD instead of arrows). Play on Firefox or download the game if needed.
+- `[Web version]` Keyboard support is faulty on Chrome/Edge, or when fullscreening. Click on the game, then press Tab, to restore keyboard focus.
 - `[Web version]` Saving and loading data (such as last level played, sound settings, and palette preferences) does not work on the Web version. If you refresh the page or close it, you'll lose your progress and preferences. If you wish to save them, please download the desktop version!
 
 Use mouse, keyboard, touch or controller to control the game. Controls:  
@@ -60,7 +61,7 @@ To generate updated web files, go to [https://schellingb.github.io/LoveWebBuilde
 
 On the `Build Package` page, select the `.love` file of the game in the "File Selection" area. On "Build Settings", select `Two files (HTML+JS) with loading progress bar` (should be the default option). Write a filename for the project (I've chosen `game` for mine). The fields of "Title", "Description" and "Author" are optional and only show up in the Web Builder preset page (which this project modifies). So you can leave them blank. For "Initial Player Resolution", choose `1280` x `720`. Finally, set "Memory Size" to `64` MB, and "Stack Size" can be left at `2` MB. Click "Build Package".
 
-The downloaded package ZIP contains two files: an HTML file and a JavaScript file. In this project, I use a modified HTML page, that removes extraneous elements such as headers and footers, so it is proper for uploading to itch.io. If you wish to do the same, simply ignore the HTML file provided by the built package and use the `index.html` file provided in the `WEB` folder of the project. This will require that your JavaScript file be named `game.js` (as seen in the package building settings). Simply replace the `game.js` file on the `WEB` folder with the one you generated, and ZIP the two together, in order to upload to sites like itch.io.
+The downloaded package ZIP contains two files: an HTML file and a JavaScript file. In this project, I use a modified HTML page, that removes extraneous elements such as headers and footers, so it is proper for uploading to itch.io. If you wish to do the same, simply ignore the HTML file provided by the built package and use the `index.html` file provided in the `WEB` folder of the project. This will require that your JavaScript file be named `game.js` (as seen in the package building step). Simply replace the `game.js` file on the `WEB` folder with the one you generated, and ZIP the two together, in order to upload to sites like itch.io.
 
 <hr>
 

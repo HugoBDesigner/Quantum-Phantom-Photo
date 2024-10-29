@@ -4,8 +4,6 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Quantum Phantom Photo</title>
-	<script src = "webdb.js"></script>
-	<script src = "consolewrapper.js"></script>
 	<style type="text/css">
 	html, body
 	{
@@ -65,8 +63,10 @@ var DoLoad = function()
 {
 	canvas.onclick = function()
 	{
-		if (canvas.disabled) return;
-		canvas.disabled = true;
+		canvas.tabIndex = 0;
+		canvas.focus();
+		// if (canvas.disabled) return;
+		// canvas.disabled = true;
 		canvas.scrollIntoView();
 		ctx.pCnt = 0;
 	};
@@ -90,7 +90,7 @@ var DoLoad = function()
 		setTimeout(function()
 		{
 			window.onerror = function(e,u,l) { Fail(e+'<br>('+u+':'+l+')'); };
-			Module = { TOTAL_MEMORY: 1024*1024*48, TOTAL_STACK: 1024*1024*2, currentScriptUrl: '-', preInit: DoExecute };
+			Module = { TOTAL_MEMORY: 1024*1024*64, TOTAL_STACK: 1024*1024*2, currentScriptUrl: '-', preInit: DoExecute };
 			var s = document.createElement('script'), d = document.documentElement;
 			s.textContent = xhr.response;
 			d.appendChild(s);

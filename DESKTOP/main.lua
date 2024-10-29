@@ -8,6 +8,7 @@ sprites = {}
 
 function love.load()
 	IS_WEB = (love.system.getOS() == "Web")
+	DEBUG_FAKETOUCH = false -- DEBUG ONLY
 	
 	-- These exist for mobile mainly (desktop MAY benefit though)
 	display_x = 0
@@ -891,7 +892,7 @@ function love.gamepadaxis(joystick, axis, value)
 		end
 		
 		local new_dir
-		local dist = math.sqrt(gamepad_axis[id].x ^ 2 + gamepad_axis[id].y ^ 2)
+		local dist = math.distance(0, 0, gamepad_axis[id].x, gamepad_axis[id].y)
 		if (dist >= gamepad_axis.deadzone) then
 			if (math.abs(gamepad_axis[id].x) >= math.abs(gamepad_axis[id].y)) then -- Horizontal movement
 				new_dir = ( (gamepad_axis[id].x >= 0) and "right" or "left" )
@@ -919,27 +920,28 @@ end
 touch_pressed = {}
 function love.touchpressed( id, x, y, dx, dy, pressure )
 	touch_pressed[id] = {x = x, y = y, pressed = true}
-	love.mousepressed(x, y, 1, false, true)
+	love.mousepressed(x, y, 1, "proxy")
 end
 
 function love.touchreleased( id, x, y, dx, dy, pressure )
 	touch_pressed[id] = {x = x, y = y, pressed = false}
-	love.mousereleased(x, y, 1, false, true)
+	love.mousereleased(x, y, 1, "proxy")
 end
 
 function love.touchmoved(id, x, y, dx, dy, pressure)
 	if (touch_pressed[id] and touch_pressed[id].pressed) then
-		love.mousemoved(x, y, dx, dy, false, true)
+		love.mousemoved(x, y, dx, dy, "proxy")
 	end
 end
 
-function love.mousepressed(x, y, button, isTouch, touchProxy)
-	if (isTouch) then return end
-	
+function love.mousepressed(x, y, button, isTouch)
+	if (isTouch == true) then return end
 	if (button ~= 1) then return end
 	
+	local touchProxy = (isTouch == "proxy")
+	
 	x, y = mouseTransform(x, y)
-	-- touchProxy = true -- DEBUG
+	if (DEBUG_FAKETOUCH) then touchProxy = true end -- DEBUG
 	
 	local mx, my = x*base_scale/scale, y*base_scale/scale
 	if (menu_left.state == "closed" and menu_right.state == "closed") then
@@ -975,12 +977,47 @@ function love.mousepressed(x, y, button, isTouch, touchProxy)
 		return
 	end
 	
+	-- Touchscreen "expands" the bounding boxes, so overlaps happen. This is to resolve them
+	local dpad_down = {}
+	local last_press = nil
 	for i, v in pairs(button_mapping.dpad) do
-		if ( aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy) ) then
-			mouse_dpadpressed = i
-			dpad_pressed(i)
-			break
+		dpad_down[i] = aabb(mx, my, v[1], v[2], v[3], v[4], v.shape, touchProxy)
+		if (dpad_down[i]) then
+			last_press = i
+			if (not touchProxy) then
+				break
+			end
 		end
+	end
+	
+	if (touchProxy) then
+		local dpad = button_mapping.dpad
+		if (dpad_down.up and dpad_down.left) then
+			local dist_up = math.distance(mx, my, dpad.up[1] + dpad.up[3]/2, dpad.up[2] + dpad.up[4]/2)
+			local dist_left = math.distance(mx, my, dpad.left[1] + dpad.left[3]/2, dpad.left[2] + dpad.left[4]/2)
+			
+			last_press = (dist_up <= dist_left and "up" or "left")
+		elseif (dpad_down.up and dpad_down.right) then
+			local dist_up = math.distance(mx, my, dpad.up[1] + dpad.up[3]/2, dpad.up[2] + dpad.up[4]/2)
+			local dist_right = math.distance(mx, my, dpad.right[1] + dpad.right[3]/2, dpad.right[2] + dpad.right[4]/2)
+			
+			last_press = (dist_up <= dist_right and "up" or "right")
+		elseif (dpad_down.down and dpad_down.left) then
+			local dist_down = math.distance(mx, my, dpad.down[1] + dpad.down[3]/2, dpad.down[2] + dpad.down[4]/2)
+			local dist_left = math.distance(mx, my, dpad.left[1] + dpad.left[3]/2, dpad.left[2] + dpad.left[4]/2)
+			
+			last_press = (dist_down <= dist_left and "down" or "left")
+		elseif (dpad_down.down and dpad_down.right) then
+			local dist_down = math.distance(mx, my, dpad.down[1] + dpad.down[3]/2, dpad.down[2] + dpad.down[4]/2)
+			local dist_right = math.distance(mx, my, dpad.right[1] + dpad.right[3]/2, dpad.right[2] + dpad.right[4]/2)
+			
+			last_press = (dist_down <= dist_right and "down" or "right")
+		end
+	end
+		
+	if (last_press) then
+		mouse_dpadpressed = last_press
+		dpad_pressed(last_press)
 	end
 	
 	for i, v in pairs(button_mapping.buttons) do
@@ -996,12 +1033,14 @@ function love.mousepressed(x, y, button, isTouch, touchProxy)
 	end
 end
 
-function love.mousereleased(x, y, button, isTouch, touchProxy)
-	if (isTouch) then return end
+function love.mousereleased(x, y, button, isTouch)
+	if (isTouch == true) then return end
 	if (button ~= 1) then return end
 	
+	local touchProxy = (isTouch == "proxy")
+	
 	x, y = mouseTransform(x, y)
-	-- touchProxy = true -- DEBUG
+	if (DEBUG_FAKETOUCH) then touchProxy = true end -- DEBUG
 	
 	if (mouse_dpadpressed) then
 		dpad_released(mouse_dpadpressed)
@@ -1019,11 +1058,13 @@ function love.mousereleased(x, y, button, isTouch, touchProxy)
 	end
 end
 
-function love.mousemoved(x, y, dx, dy, isTouch, touchProxy)
-	if (isTouch) then return end
+function love.mousemoved(x, y, dx, dy, isTouch)
+	if (isTouch == true) then return end
+	
+	local touchProxy = (isTouch == "proxy")
 	
 	x, y = mouseTransform(x, y)
-	-- touchProxy = true -- DEBUG
+	if (DEBUG_FAKETOUCH) then touchProxy = true end -- DEBUG
 	
 	if (not touchProxy) then
 		if (menu_right.state == "closed" and menu_left.state == "closed") then
@@ -1091,11 +1132,11 @@ function aabb(mx, my, x, y, w, h, shape, touchProxy)
 		elseif (shape == "tri_right") then
 			return (mx-x)+(my-y) >= (w+h)/2
 		elseif (shape == "circle") then
-			return distance(mx-x, (my-y)/h*w, w/2, w/2) <= w/2
+			return math.distance(mx-x, (my-y)/h*w, w/2, w/2) <= w/2
 		elseif (shape == "semicircle_left") then
-			return distance(mx-x, (my-y)/h*w, w/2, w/2) <= w/2 and (mx-x) <= w/2
+			return math.distance(mx-x, (my-y)/h*w, w/2, w/2) <= w/2 and (mx-x) <= w/2
 		elseif (shape == "semicircle_right") then
-			return distance(mx-x, (my-y)/h*w, w/2, w/2) <= w/2 and (mx-x) >= w/2
+			return math.distance(mx-x, (my-y)/h*w, w/2, w/2) <= w/2 and (mx-x) >= w/2
 		elseif (shape == "tri_up") then
 			return (mx-x)/(w/2) + (my-y-h)/h >= 0 and (w - (mx-x))/(w/2) + (my-y-h)/h >= 0 -- Thanks, Desmos!
 		elseif (shape == "tri_down") then
@@ -1108,7 +1149,7 @@ function aabb(mx, my, x, y, w, h, shape, touchProxy)
 	return false
 end
 
-function distance(x1, y1, x2, y2)
+function math.distance(x1, y1, x2, y2)
 	return math.sqrt( (x1-x2)^2 + (y1-y2)^2 )
 end
 
@@ -1430,7 +1471,7 @@ function makeTest()
 		testaabb_img = nil
 		return
 	end
-	local touchProxy = false -- FOR DEBUG REASONS
+	local touchProxy = DEBUG_FAKETOUCH -- FOR DEBUG REASONS
 	testaabb:mapPixel(function(x, y, r, g, b, a)
 		if (menu_right.state == "closed" and menu_left.state == "closed") then
 			-- local mx, my = love.mouse.getPosition()
