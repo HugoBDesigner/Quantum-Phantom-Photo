@@ -47,7 +47,7 @@ For running the game directly, download [Love2D](https://love2d.org/), specifica
 
 You can run the game by dragging and dropping the source code folder (specifically the `DESKTOP` folder on this project) into the Love2D executable (`love.exe`). The `main.lua` file must be at the root of the folder in order for the game to run. For running from an IDE or text editor, refer to this guide: [https://love2d.org/wiki/Getting_Started#Running_Games](https://love2d.org/wiki/Getting_Started#Running_Games).
 
-You can also convert the game into a `.love` file, which runs directly on Love2D. To make a `.love` file, compress the game's code (the contents of the `DESKTOP` folder) into a ZIP file, such that `main.lua` is on the root folder. If `main.lua` is inside a subfolder in the ZIP, the game won't run. Then, double-click to run or drag-and-drop it into the Love2D executable (`love.exe`).
+You can also convert the game into a `.love` file, which runs directly on Love2D. To make a `.love` file, compress the game's code (the contents of the `DESKTOP` folder) into a ZIP file, such that `main.lua` is on the root folder. If `main.lua` is inside a subfolder in the ZIP, the game won't run. You can then rename the file and change the extension from `.zip` to `.love` (if you're on Windows and can't see file extensions, find the "Folder Options" menu, and in the "View" tab, unmark "Hide extensions for known file types"). Then, double-click to run or drag-and-drop it into the Love2D executable (`love.exe`).
 
 Finally, to create an executable, refer to [this page](https://love2d.org/wiki/Game_Distribution). Creating an executable requires a `.love` file, so follow the instructions above.
 
